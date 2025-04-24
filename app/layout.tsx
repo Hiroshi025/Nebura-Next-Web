@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nebura Client",
+  title: "Hiroshi025",
   description:
-    "Este proyecto es una API modular que integra múltiples servicios como Discord, WhatsApp, GitHub, Google AI, y más. A continuación, se detallan las funcionalidades, rutas, comandos y eventos disponibles en el proyecto.",
+    "Soy un desarrollador que crea distintos proyectos y herramientas por pasion y gusto del anime y manga japones, espero seguir compartiendo mi trabajo y aprendiendo de la comunidad.",
   generator: "Next.js",
-  applicationName: "Nebura Client",
-  keywords: "API, modular, Discord, WhatsApp, GitHub, Google AI",
+  applicationName: "Portfolio Hiroshi025",
+  keywords: "desarrollo, anime, manga, proyectos, herramientas",
   authors: [
     {
       name: "Hiroshi025",
