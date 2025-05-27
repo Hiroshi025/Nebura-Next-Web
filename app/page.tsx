@@ -261,16 +261,16 @@ const PortfolioPage = () => {
 
           <div className="hidden md:flex items-center space-x-6">
             <Link
-              href="#about"
+              href="/anime"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
-              Sobre mí
+              Manga
             </Link>
             <Link
-              href="#skills"
+              href="/docs"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
-              Habilidades
+              Herramientas
             </Link>
             <Link
               href="#projects"

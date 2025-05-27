@@ -97,7 +97,7 @@ export default function LandingPage() {
               href="/anime"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
-              Anime Web
+              Anime & Manga
             </Link>
             <Link
               href="/chat"

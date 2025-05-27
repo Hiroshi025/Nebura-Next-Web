@@ -4,17 +4,20 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FaArrowRight, FaCode, FaExpand, FaGithub, FaRandom } from "react-icons/fa";
 import { FiGithub, FiMail, FiTwitter } from "react-icons/fi";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import SyntaxHighlighter from "react-syntax-highlighter";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 // Importa Swiper para carruseles
 import { Swiper, SwiperSlide } from "swiper/react";
 
+import AnimeCard from "@/components/anime/AnimeCard";
+import MangaCard from "@/components/anime/MangaCard";
+import MangaDetails from "@/components/anime/MangaDetails";
 import { Button } from "@/components/ui/button";
 import {
 	Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
@@ -231,6 +234,51 @@ async function searchAniList(query) {
   },
 ];
 
+// Interfaces para datos de Jikan API
+interface Manga {
+  mal_id: number;
+  title: string;
+  images: {
+    webp: {
+      image_url: string;
+    };
+  };
+  score: number;
+  type: string;
+  chapters: number;
+  genres: Array<{ name: string }>;
+  synopsis: string;
+  background: string;
+}
+
+interface Anime {
+  mal_id: number;
+  title: string;
+  images: {
+    webp: {
+      image_url: string;
+    };
+  };
+  score: number;
+  type: string;
+  episodes: number;
+  genres: Array<{ name: string }>;
+  synopsis: string;
+  year: number;
+}
+
+interface Creator {
+  mal_id: number;
+  name: string;
+  images: {
+    jpg: {
+      image_url: string;
+    };
+  };
+  favorites: number;
+  positions: string[];
+}
+
 export default function AnimePage() {
   const [activeTab, setActiveTab] = useState("waifu");
   const [randomWaifu, setRandomWaifu] = useState("");
@@ -238,6 +286,42 @@ export default function AnimePage() {
   const [selectedImage, setSelectedImage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Estados para top y búsqueda de manga/anime/creators
+  const [topManga, setTopManga] = useState<Manga[]>([]);
+  const [topAnime, setTopAnime] = useState<Anime[]>([]);
+  const [topCreators, setTopCreators] = useState<Creator[]>([]);
+  const [searchResults, setSearchResults] = useState<Manga[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedManga, setSelectedManga] = useState<any>(null);
+  const [showMangaDetails, setShowMangaDetails] = useState(false);
+
+  // Añade estos estados junto a los demás estados de búsqueda
+  const [genreFilter, setGenreFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [scoreFilter, setScoreFilter] = useState("");
+
+  // Opciones de ejemplo, puedes cargarlas dinámicamente si lo prefieres
+  const genreOptions = [
+    { value: "", label: "Todos" },
+    { value: "Action", label: "Acción" },
+    { value: "Romance", label: "Romance" },
+    { value: "Comedy", label: "Comedia" },
+    { value: "Drama", label: "Drama" },
+    { value: "Fantasy", label: "Fantasía" },
+    { value: "Horror", label: "Horror" },
+    // ...agrega más géneros si lo deseas
+  ];
+
+  const typeOptions = [
+    { value: "", label: "Todos" },
+    { value: "manga", label: "Manga" },
+    { value: "novel", label: "Novela" },
+    { value: "one_shot", label: "One Shot" },
+    { value: "doujinshi", label: "Doujinshi" },
+    { value: "manhwa", label: "Manhwa" },
+    { value: "manhua", label: "Manhua" },
+  ];
 
   // Obtener waifu aleatoria
   const fetchRandomWaifu = async () => {
@@ -273,268 +357,616 @@ export default function AnimePage() {
     setIsModalOpen(true);
   };
 
+  // Modifica la función de búsqueda para incluir los filtros
+  const searchManga = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      let url = `https://api.jikan.moe/v4/manga?q=${encodeURIComponent(query)}&limit=10`;
+      if (genreFilter) url += `&genres=${encodeURIComponent(genreFilter)}`;
+      if (typeFilter) url += `&type=${encodeURIComponent(typeFilter)}`;
+      if (scoreFilter) url += `&min_score=${encodeURIComponent(scoreFilter)}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+      setSearchResults(data.data || []);
+    } catch (error) {
+      console.error("Error searching manga:", error);
+      setSearchResults([]);
+    }
+    setSearchLoading(false);
+  };
+
+  // Función para cargar los tops
+  const fetchTopContent = async () => {
+    try {
+      // Top manga
+      const mangaRes = await fetch(
+        "https://api.jikan.moe/v4/top/manga?limit=20"
+      );
+      const mangaData = await mangaRes.json();
+      setTopManga(mangaData.data || []);
+
+      // Top anime
+      const animeRes = await fetch(
+        "https://api.jikan.moe/v4/top/anime?limit=20"
+      );
+      const animeData = await animeRes.json();
+      setTopAnime(animeData.data || []);
+
+      // Top creators
+      const peopleRes = await fetch(
+        "https://api.jikan.moe/v4/top/people?limit=20"
+      );
+      const peopleData = await peopleRes.json();
+      setTopCreators(peopleData.data || []);
+    } catch (error) {
+      console.error("Error fetching top content:", error);
+    }
+  };
+
+  // Efecto para cargar los datos al montar el componente
+  useEffect(() => {
+    fetchTopContent();
+  }, []);
+
+  // Efecto para buscar con debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchManga(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900 text-gray-100">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-purple-900/30">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-500">
-              Nebura Gallery
-            </span>
-          </Link>
-          <div className="flex items-center space-x-4">
-            <Input
-              type="text"
-              placeholder="Buscar waifus..."
-              className="bg-gray-800/50 border-gray-700 w-64"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+    <AnimatePresence>
+      <motion.div
+        key="anime-page"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900 text-gray-100"
+      >
+        {/* Navbar */}
+        <nav className="sticky top-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-purple-900/30">
+          <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+            <Link href="/" className="flex items-center space-x-2">
+              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-500">
+                Nebura Gallery
+              </span>
+            </Link>
+            <div className="flex items-center space-x-4">
+              <Input
+                type="text"
+                placeholder="Buscar waifus..."
+                className="bg-gray-800/50 border-gray-700 w-64"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Link href="/" passHref legacyBehavior>
+                <Button
+                  variant="ghost"
+                  className="text-gray-300 hover:text-white"
+                >
+                  Inicio
+                </Button>
+              </Link>
+              <Link href="/anime" passHref legacyBehavior>
+                <Button
+                  variant="ghost"
+                  className="text-gray-300 hover:text-white"
+                >
+                  Galerías
+                </Button>
+              </Link>
+              <Link href="https://host.hiroshi-dev.me/api/v1/api-docs" passHref legacyBehavior>
+                <Button
+                  variant="ghost"
+                  className="text-gray-300 hover:text-white"
+                >
+                  APIs
+                </Button>
+              </Link>
+              <Link
+                href="https://github.com/hiroshi025"
+                target="_blank"
+                passHref
+                legacyBehavior
+              >
+                <Button className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700">
+                  <FaGithub className="mr-2" /> GitHub
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </nav>
+
+        {/* Hero Section */}
+        <section className="relative h-[70vh] flex flex-col justify-center items-center text-center overflow-hidden">
+          <div className="absolute inset-0">
+            <Image
+              src={imageData.waifu4k[0]}
+              alt="Hero Waifu"
+              fill
+              className="object-cover opacity-30"
+              priority
             />
-            <Link href="/" passHref legacyBehavior>
-              <Button
-                variant="ghost"
-                className="text-gray-300 hover:text-white"
-              >
-                Inicio
-              </Button>
-            </Link>
-            <Link href="/anime" passHref legacyBehavior>
-              <Button
-                variant="ghost"
-                className="text-gray-300 hover:text-white"
-              >
-                Galerías
-              </Button>
-            </Link>
-            <Link href="https://help.hiroshi-dev.me" passHref legacyBehavior>
-              <Button
-                variant="ghost"
-                className="text-gray-300 hover:text-white"
-              >
-                APIs
-              </Button>
-            </Link>
-            <Link
-              href="https://github.com/hiroshi025"
-              target="_blank"
-              passHref
-              legacyBehavior
-            >
-              <Button className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700">
-                <FaGithub className="mr-2" /> GitHub
-              </Button>
-            </Link>
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/70 to-transparent" />
           </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative h-[70vh] flex flex-col justify-center items-center text-center overflow-hidden">
-        <div className="absolute inset-0">
-          <Image
-            src={imageData.waifu4k[0]}
-            alt="Hero Waifu"
-            fill
-            className="object-cover opacity-30"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/70 to-transparent" />
-        </div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-4"
-        >
-          <h1 className="text-6xl font-bold mb-6">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-400 to-violet-400">
-              Explora el Mundo Anime
-            </span>
-          </h1>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
-            Descubre las mejores waifus, imágenes 4K, mangas y aprende a usar
-            APIs de anime en tus proyectos.
-          </p>
-          <div className="flex justify-center space-x-4">
-            <Button
-              onClick={fetchRandomWaifu}
-              className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-              size="lg"
-            >
-              <FaRandom className="mr-2" /> Waifu Aleatoria
-            </Button>
-            <Button
-              variant="outline"
-              className="border-purple-400 text-purple-400 hover:bg-purple-900/50"
-              size="lg"
-            >
-              <FaCode className="mr-2" /> Ver APIs
-            </Button>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Random Waifu Section */}
-      <section className="py-16 bg-gray-900/50">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <Card className="bg-gray-800/60 border-purple-900/50 overflow-hidden">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-center">
-                Waifu del Día
-              </CardTitle>
-              <CardDescription className="text-center text-purple-300">
-                Descubre una nueva waifu cada vez que pulses el botón
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center p-6">
-              {loading ? (
-                <div className="h-64 w-64 flex items-center justify-center">
-                  <div className="animate-pulse rounded-full bg-purple-900/50 h-12 w-12"></div>
-                </div>
-              ) : randomWaifu ? (
-                <div className="relative h-64 w-64 rounded-lg overflow-hidden shadow-lg">
-                  <Image
-                    src={randomWaifu}
-                    alt="Random Waifu"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="h-64 w-64 flex items-center justify-center bg-gray-700 rounded-lg">
-                  <p className="text-gray-400">No se pudo cargar la imagen</p>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-center pb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="relative z-10 px-4"
+          >
+            <h1 className="text-6xl font-bold mb-6">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-400 to-violet-400">
+                Explora el Mundo Anime
+              </span>
+            </h1>
+            <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
+              Descubre las mejores waifus, imágenes 4K, mangas y aprende a usar
+              APIs de anime en tus proyectos.
+            </p>
+            <div className="flex justify-center space-x-4">
               <Button
                 onClick={fetchRandomWaifu}
                 className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                size="lg"
               >
-                <FaRandom className="mr-2" /> Otra Waifu
+                <FaRandom className="mr-2" /> Waifu Aleatoria
               </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </section>
+              <Button
+                variant="outline"
+                className="border-purple-400 text-purple-400 hover:bg-purple-900/50"
+                size="lg"
+              >
+                <FaCode className="mr-2" /> Ver APIs
+              </Button>
+            </div>
+          </motion.div>
+        </section>
 
-      {/* Gallery Tabs */}
-      <section className="py-16 container mx-auto px-4">
-        <Tabs defaultValue="waifu" className="w-full">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold">Galerías</h2>
-            <TabsList className="bg-gray-800/50 border border-purple-900/50">
-              <TabsTrigger
-                value="waifu"
-                className="data-[state=active]:bg-purple-900/50"
-              >
-                Waifus
-              </TabsTrigger>
-              <TabsTrigger
-                value="nsfw"
-                className="data-[state=active]:bg-pink-900/50"
-              >
-                +18
-              </TabsTrigger>
-              <TabsTrigger
-                value="manga"
-                className="data-[state=active]:bg-blue-900/50"
-              >
-                Manga
-              </TabsTrigger>
-              <TabsTrigger
-                value="gifs"
-                className="data-[state=active]:bg-green-900/50"
-              >
-                GIFs
-              </TabsTrigger>
-            </TabsList>
+        {/* Random Waifu Section */}
+        <section className="py-16 bg-gray-900/70">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <Card className="bg-gray-800/60 border-purple-900/50 overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-center">
+                  Waifu del Día
+                </CardTitle>
+                <CardDescription className="text-center text-purple-300">
+                  Descubre una nueva waifu cada vez que pulses el botón
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center p-6">
+                {loading ? (
+                  <div className="h-64 w-64 flex items-center justify-center">
+                    <div className="animate-pulse rounded-full bg-purple-900/50 h-12 w-12"></div>
+                  </div>
+                ) : randomWaifu ? (
+                  <div className="relative h-64 w-64 rounded-lg overflow-hidden shadow-lg">
+                    <Image
+                      src={randomWaifu}
+                      alt="Random Waifu"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-64 w-64 flex items-center justify-center bg-gray-700 rounded-lg">
+                    <p className="text-gray-400">No se pudo cargar la imagen</p>
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-center pb-6">
+                <Button
+                  onClick={fetchRandomWaifu}
+                  className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                >
+                  <FaRandom className="mr-2" /> Otra Waifu
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
+        </section>
 
-          {/* Waifu Tab */}
-          <TabsContent value="waifu">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {imageData.waifu4k.map((url, index) => (
+        {/* Gallery Tabs */}
+        <section className="py-16 container mx-auto px-4">
+          <Tabs defaultValue="waifu" className="w-full">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">Galerías</h2>
+              <TabsList className="bg-gray-800/50 border border-purple-900/50">
+                <TabsTrigger
+                  value="waifu"
+                  className="data-[state=active]:bg-purple-900/50"
+                >
+                  Waifus
+                </TabsTrigger>
+                <TabsTrigger
+                  value="nsfw"
+                  className="data-[state=active]:bg-pink-900/50"
+                >
+                  +18
+                </TabsTrigger>
+                <TabsTrigger
+                  value="manga"
+                  className="data-[state=active]:bg-blue-900/50"
+                >
+                  Manga
+                </TabsTrigger>
+                <TabsTrigger
+                  value="gifs"
+                  className="data-[state=active]:bg-green-900/50"
+                >
+                  GIFs
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Waifu Tab */}
+            <TabsContent value="waifu">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {imageData.waifu4k.map((url, index) => (
+                  <motion.div
+                    key={index}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Card className="bg-gray-800/60 border-purple-900/50 overflow-hidden hover:border-purple-500 transition-colors">
+                      <CardContent className="p-0">
+                        <button
+                          onClick={() => openImageModal(url)}
+                          className="w-full h-64 relative block"
+                        >
+                          <Image
+                            src={url}
+                            alt={`Waifu ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <FaExpand className="text-white text-2xl" />
+                          </div>
+                        </button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* NSFW Tab */}
+            <TabsContent value="nsfw">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {imageData.nsfw.map((url, index) => (
+                  <motion.div key={index} whileHover={{ scale: 1.03 }}>
+                    <Card className="bg-gray-800/60 border-pink-900/50 overflow-hidden hover:border-pink-500 transition-colors">
+                      <CardContent className="p-0">
+                        <button
+                          onClick={() => openImageModal(url)}
+                          className="w-full h-64 relative block"
+                        >
+                          <Image
+                            src={url}
+                            alt={`NSFW ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <FaExpand className="text-white text-2xl" />
+                          </div>
+                        </button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+              <p className="text-center text-sm text-gray-400 mt-4">
+                Nota: Estas imágenes son solo sugerentes, no contienen contenido
+                explícito.
+              </p>
+            </TabsContent>
+
+            {/* Manga Tab */}
+            <TabsContent value="manga">
+              <Swiper
+                modules={[Navigation, Pagination, Autoplay]}
+                spaceBetween={30}
+                slidesPerView={1}
+                navigation
+                pagination={{ clickable: true }}
+                autoplay={{ delay: 5000 }}
+                breakpoints={{
+                  640: { slidesPerView: 1 },
+                  768: { slidesPerView: 2 },
+                  1024: { slidesPerView: 3 },
+                }}
+                className="h-[400px]"
+              >
+                {imageData.manga.map((url, index) => (
+                  <SwiperSlide key={index}>
+                    <Card className="bg-gray-800/60 border-blue-900/50 h-full">
+                      <CardContent className="p-0 h-full">
+                        <button
+                          onClick={() => openImageModal(url)}
+                          className="w-full h-full relative block"
+                        >
+                          <Image
+                            src={url}
+                            alt={`Manga ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                        </button>
+                      </CardContent>
+                    </Card>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            </TabsContent>
+
+            {/* GIFs Tab */}
+            <TabsContent value="gifs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {imageData.gifs.map((url, index) => (
+                  <Card
+                    key={index}
+                    className="bg-gray-800/60 border-green-900/50 overflow-hidden"
+                  >
+                    <CardContent className="p-0">
+                      <button
+                        onClick={() => openImageModal(url)}
+                        className="w-full h-64 relative block"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={`GIF ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </section>
+
+        {/* Manga Search Section - NUEVA UBICACIÓN */}
+        <section className="py-16 bg-gradient-to-br from-gray-900 via-purple-950/80 to-violet-950">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto bg-gray-800/70 rounded-xl shadow-lg p-8 border border-purple-900/40">
+              <h2 className="text-3xl font-bold mb-2 text-center text-purple-300">
+                Buscar Mangas
+              </h2>
+              <p className="text-gray-400 mb-6 text-center">
+                Encuentra tus mangas favoritos usando el buscador de MyAnimeList
+                (Jikan API)
+              </p>
+              <div className="flex items-center gap-4 mb-8">
+                <Input
+                  type="text"
+                  placeholder="Buscar mangas por título..."
+                  className="bg-gray-800/80 border-purple-700 focus:border-purple-400 transition-colors"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Filtros avanzados */}
+              <div className="flex flex-wrap gap-4 mb-4 justify-center">
+                <select
+                  value={genreFilter}
+                  onChange={(e) => setGenreFilter(e.target.value)}
+                  className="bg-gray-800/80 border-purple-700 text-gray-200 rounded px-3 py-2"
+                >
+                  {genreOptions.map((g) => (
+                    <option key={g.value} value={g.value}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="bg-gray-800/80 border-purple-700 text-gray-200 rounded px-3 py-2"
+                >
+                  {typeOptions.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={scoreFilter}
+                  onChange={(e) => setScoreFilter(e.target.value)}
+                  placeholder="Puntuación mínima"
+                  className="bg-gray-800/80 border-purple-700 text-gray-200 rounded px-3 py-2 w-40"
+                />
+              </div>
+
+              {searchLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                </div>
+              ) : searchResults.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {searchResults.map((manga) => (
+                    <motion.div
+                      key={manga.mal_id}
+                      whileHover={{
+                        scale: 1.04,
+                        boxShadow: "0 4px 24px #a78bfa44",
+                      }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                      onClick={() => {
+                        setSelectedManga(manga);
+                        setShowMangaDetails(true);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <MangaCard manga={manga} />
+                    </motion.div>
+                  ))}
+                </div>
+              ) : searchQuery ? (
+                <p className="text-center text-gray-400 py-8">
+                  No se encontraron resultados
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        {/* Sección de detalles del manga seleccionado */}
+        {showMangaDetails && selectedManga && (
+          <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+            <div className="relative bg-gray-900 rounded-xl shadow-2xl max-w-4xl w-full mx-4 overflow-y-auto max-h-[90vh]">
+              <button
+                className="absolute top-4 right-4 z-10 bg-purple-700 hover:bg-purple-900 text-white rounded-full p-2"
+                onClick={() => setShowMangaDetails(false)}
+              >
+                ✕
+              </button>
+              <MangaDetails params={{ id: String(selectedManga.mal_id) }} />
+            </div>
+          </section>
+        )}
+
+        {/* More Galleries */}
+        <section className="py-16 container mx-auto px-4">
+          <h2 className="text-3xl font-bold mb-8">Más Galerías</h2>
+
+          {/* Characters Gallery */}
+          <div className="mb-16">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-semibold text-pink-400">
+                Populares
+              </h3>
+              <Button
+                variant="ghost"
+                className="text-pink-400 hover:bg-pink-900/20"
+              >
+                Ver todos <FaArrowRight className="ml-2" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {imageData.characters.map((url, index) => (
                 <motion.div
                   key={index}
-                  whileHover={{ scale: 1.03 }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
+                  className="relative h-48 rounded-lg overflow-hidden"
                 >
-                  <Card className="bg-gray-800/60 border-purple-900/50 overflow-hidden hover:border-purple-500 transition-colors">
-                    <CardContent className="p-0">
-                      <button
-                        onClick={() => openImageModal(url)}
-                        className="w-full h-64 relative block"
-                      >
-                        <Image
-                          src={url}
-                          alt={`Waifu ${index + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <FaExpand className="text-white text-2xl" />
-                        </div>
-                      </button>
-                    </CardContent>
-                  </Card>
+                  <button
+                    onClick={() => openImageModal(url)}
+                    className="w-full h-full relative block"
+                  >
+                    <Image
+                      src={url}
+                      alt={`Character ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <FaExpand className="text-white text-2xl" />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-3 pointer-events-none">
+                      <span className="font-medium">Personaje {index + 1}</span>
+                    </div>
+                  </button>
                 </motion.div>
               ))}
             </div>
-          </TabsContent>
+          </div>
 
-          {/* NSFW Tab */}
-          <TabsContent value="nsfw">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {imageData.nsfw.map((url, index) => (
-                <motion.div key={index} whileHover={{ scale: 1.03 }}>
-                  <Card className="bg-gray-800/60 border-pink-900/50 overflow-hidden hover:border-pink-500 transition-colors">
-                    <CardContent className="p-0">
-                      <button
-                        onClick={() => openImageModal(url)}
-                        className="w-full h-64 relative block"
-                      >
-                        <Image
-                          src={url}
-                          alt={`NSFW ${index + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <FaExpand className="text-white text-2xl" />
-                        </div>
-                      </button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+          {/* Backgrounds Gallery */}
+          <div className="mb-16">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-semibold text-blue-400">
+                Fondos
+              </h3>
+              <Button
+                variant="ghost"
+                className="text-blue-400 hover:bg-blue-900/20"
+              >
+                Ver todos <FaArrowRight className="ml-2" />
+              </Button>
             </div>
-            <p className="text-center text-sm text-gray-400 mt-4">
-              Nota: Estas imágenes son solo sugerentes, no contienen contenido
-              explícito.
-            </p>
-          </TabsContent>
-
-          {/* Manga Tab */}
-          <TabsContent value="manga">
             <Swiper
-              modules={[Navigation, Pagination, Autoplay]}
-              spaceBetween={30}
+              modules={[Navigation, Pagination]}
+              spaceBetween={20}
               slidesPerView={1}
               navigation
               pagination={{ clickable: true }}
-              autoplay={{ delay: 5000 }}
               breakpoints={{
                 640: { slidesPerView: 1 },
                 768: { slidesPerView: 2 },
                 1024: { slidesPerView: 3 },
               }}
-              className="h-[400px]"
+              className="h-64"
             >
-              {imageData.manga.map((url, index) => (
+              {imageData.backgrounds.map((url, index) => (
                 <SwiperSlide key={index}>
-                  <Card className="bg-gray-800/60 border-blue-900/50 h-full">
+                  <motion.div
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative h-full rounded-lg overflow-hidden"
+                  >
+                    <button
+                      onClick={() => openImageModal(url)}
+                      className="w-full h-full relative block"
+                    >
+                      <Image
+                        src={url}
+                        alt={`Background ${index + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <FaExpand className="text-white text-2xl" />
+                      </div>
+                    </button>
+                  </motion.div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+
+          {/* Cosplay Gallery */}
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-semibold text-green-400">
+                Cosplay
+              </h3>
+              <Button
+                variant="ghost"
+                className="text-green-400 hover:bg-green-900/20"
+              >
+                Ver todos <FaArrowRight className="ml-2" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {imageData.cosplay.map((url, index) => (
+                <motion.div
+                  key={index}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="h-64"
+                >
+                  <Card className="bg-gray-800/60 border-green-900/50 overflow-hidden hover:border-green-500 transition-colors h-full">
                     <CardContent className="p-0 h-full">
                       <button
                         onClick={() => openImageModal(url)}
@@ -542,47 +974,28 @@ export default function AnimePage() {
                       >
                         <Image
                           src={url}
-                          alt={`Manga ${index + 1}`}
+                          alt={`Cosplay ${index + 1}`}
                           fill
                           className="object-cover"
                         />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <FaExpand className="text-white text-2xl" />
+                        </div>
                       </button>
                     </CardContent>
+                    <CardFooter className="p-4">
+                      <p className="text-sm text-gray-300">
+                        Cosplay de personaje anime #{index + 1}
+                      </p>
+                    </CardFooter>
                   </Card>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          </TabsContent>
-
-          {/* GIFs Tab */}
-          <TabsContent value="gifs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {imageData.gifs.map((url, index) => (
-                <Card
-                  key={index}
-                  className="bg-gray-800/60 border-green-900/50 overflow-hidden"
-                >
-                  <CardContent className="p-0">
-                    <button
-                      onClick={() => openImageModal(url)}
-                      className="w-full h-64 relative block"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt={`GIF ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  </CardContent>
-                </Card>
+                </motion.div>
               ))}
             </div>
-          </TabsContent>
-        </Tabs>
-      </section>
+          </div>
+        </section>
 
-      {/* API Examples Section */}
+              {/* API Examples Section */}
       <section className="py-16 bg-gray-900/50">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-2 text-center">APIs de Anime</h2>
@@ -712,271 +1125,336 @@ export default function AnimePage() {
         </div>
       </section>
 
-      {/* More Galleries */}
-      <section className="py-16 container mx-auto px-4">
-        <h2 className="text-3xl font-bold mb-8">Más Galerías</h2>
-
-        {/* Characters Gallery */}
-        <div className="mb-16">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-semibold text-pink-400">
-              Personajes Populares
-            </h3>
-            <Button
-              variant="ghost"
-              className="text-pink-400 hover:bg-pink-900/20"
-            >
-              Ver todos <FaArrowRight className="ml-2" />
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {imageData.characters.map((url, index) => (
-              <motion.div
-                key={index}
-                whileHover={{ scale: 1.05 }}
-                className="relative h-48 rounded-lg overflow-hidden"
-              >
-                <Image
-                  src={url}
-                  alt={`Character ${index + 1}`}
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-3">
-                  <span className="font-medium">Personaje {index + 1}</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Backgrounds Gallery */}
-        <div className="mb-16">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-semibold text-blue-400">Fondos 4K</h3>
-            <Button
-              variant="ghost"
-              className="text-blue-400 hover:bg-blue-900/20"
-            >
-              Ver todos <FaArrowRight className="ml-2" />
-            </Button>
-          </div>
-          <Swiper
-            modules={[Navigation, Pagination]}
-            spaceBetween={20}
-            slidesPerView={1}
-            navigation
-            pagination={{ clickable: true }}
-            breakpoints={{
-              640: { slidesPerView: 1 },
-              768: { slidesPerView: 2 },
-              1024: { slidesPerView: 3 },
-            }}
-            className="h-64"
-          >
-            {imageData.backgrounds.map((url, index) => (
-              <SwiperSlide key={index}>
-                <div className="relative h-full rounded-lg overflow-hidden">
-                  <Image
-                    src={url}
-                    alt={`Background ${index + 1}`}
-                    fill
-                    className="object-cover"
+        {/* Image Modal */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="max-w-4xl bg-gray-800 border-gray-700 p-0 overflow-hidden">
+            {selectedImage && (
+              <div className="relative w-full h-[80vh]">
+                {selectedImage.endsWith(".gif") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedImage}
+                    alt="Fullscreen"
+                    className="object-contain w-full h-full"
                   />
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </div>
+                ) : (
+                  <Image
+                    src={selectedImage}
+                    alt="Fullscreen"
+                    fill
+                    className="object-contain"
+                  />
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
-        {/* Cosplay Gallery */}
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-semibold text-green-400">
-              Cosplay Anime
-            </h3>
-            <Button
-              variant="ghost"
-              className="text-green-400 hover:bg-green-900/20"
-            >
-              Ver todos <FaArrowRight className="ml-2" />
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {imageData.cosplay.map((url, index) => (
-              <Card
-                key={index}
-                className="bg-gray-800/60 border-green-900/50 overflow-hidden"
+        {/* Top Manga Section */}
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">Mangas Populares</h2>
+              <Link href="/manga" passHref legacyBehavior>
+                <Button
+                  variant="ghost"
+                  className="text-purple-400 hover:bg-purple-900/20"
+                >
+                  Ver todos <FaArrowRight className="ml-2" />
+                </Button>
+              </Link>
+            </div>
+
+            {topManga.length > 0 ? (
+              <Swiper
+                modules={[Navigation, Pagination]}
+                spaceBetween={20}
+                slidesPerView={1}
+                navigation
+                pagination={{ clickable: true }}
+                breakpoints={{
+                  640: { slidesPerView: 1 },
+                  768: { slidesPerView: 2 },
+                  1024: { slidesPerView: 3 },
+                  1280: { slidesPerView: 4 },
+                }}
+                className="h-[500px]"
               >
-                <CardContent className="p-0">
-                  <div className="relative h-64">
-                    <Image
-                      src={url}
-                      alt={`Cosplay ${index + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter className="p-4">
-                  <p className="text-sm text-gray-300">
-                    Cosplay de personaje anime #{index + 1}
-                  </p>
-                </CardFooter>
-              </Card>
-            ))}
+                {topManga.map((manga) => (
+                  <SwiperSlide key={manga.mal_id}>
+                    <MangaCard manga={manga} />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            ) : (
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Image Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl bg-gray-800 border-gray-700 p-0 overflow-hidden">
-          {selectedImage && (
-            <div className="relative w-full h-[80vh]">
-              {selectedImage.endsWith(".gif") ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selectedImage}
-                  alt="Fullscreen"
-                  className="object-contain w-full h-full"
-                />
-              ) : (
-                <Image
-                  src={selectedImage}
-                  alt="Fullscreen"
-                  fill
-                  className="object-contain"
-                />
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Footer */}
-      <footer className="py-12 bg-gray-900/80 border-t border-purple-900/30">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="text-lg font-semibold mb-4 text-purple-400">
-                Nebura
-              </h4>
-              <p className="text-gray-400 text-sm">
-                El mejor lugar para explorar waifus, imágenes de anime y
-                aprender sobre APIs relacionadas.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4 text-purple-400">
-                Galerías
-              </h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <Link href="#" className="hover:text-purple-400">
-                    Waifus 4K
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-purple-400">
-                    Mangas
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-purple-400">
-                    Personajes
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-purple-400">
-                    Fondos
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4 text-purple-400">
-                APIs
-              </h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <Link
-                    href="https://waifu.pics/docs"
-                    className="hover:text-purple-400"
-                  >
-                    Waifu.pics
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="https://docs.nekos.best"
-                    className="hover:text-purple-400"
-                  >
-                    Nekos.best
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="https://nekosia.cat/documentation"
-                    className="hover:text-purple-400"
-                  >
-                    Nekosia
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4 text-purple-400">
-                Contacto
-              </h4>
-              <div className="flex space-x-4">
+        {/* Top Anime Section */}
+        <section className="py-16 bg-gray-900/70">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">Animes Populares</h2>
+              <Link href="/anime" passHref legacyBehavior>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="text-gray-400 hover:text-purple-400"
+                  className="text-blue-400 hover:bg-blue-900/20"
                 >
-                  <Link href="mailto:contact@hiroshi-dev.me">
-                    <FiMail className="h-5 w-5" />
-                  </Link>
-                  <span className="sr-only">Email</span>
+                  Ver todos <FaArrowRight className="ml-2" />
                 </Button>
+              </Link>
+            </div>
 
+            {topAnime.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {topAnime.map((anime) => (
+                  <AnimeCard key={anime.mal_id} anime={anime} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Top Creators Section */}
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">Creadores Populares</h2>
+              <Link href="/creators" passHref legacyBehavior>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="text-gray-400 hover:text-purple-400"
+                  className="text-green-400 hover:bg-green-900/20"
                 >
-                  <Link href="https://github.com/Hiroshi025">
-                    <FiGithub className="h-5 w-5" />
-                  </Link>
-                  <span className="sr-only">GitHub</span>
+                  Ver todos <FaArrowRight className="ml-2" />
                 </Button>
+              </Link>
+            </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-gray-400 hover:text-purple-400"
+            {topCreators.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Swiper
+                  modules={[Navigation, Pagination]}
+                  spaceBetween={20}
+                  slidesPerView={1}
+                  navigation
+                  pagination={{ clickable: true }}
+                  breakpoints={{
+                    640: { slidesPerView: 1 },
+                    768: { slidesPerView: 2 },
+                    1024: { slidesPerView: 3 },
+                    1280: { slidesPerView: 4 },
+                  }}
+                  className="h-[460px] pb-8"
                 >
-                  <Link href="https://twitter.com/Hiroshi025">
-                    <FiTwitter className="h-5 w-5" />
-                  </Link>
-                  <span className="sr-only">Twitter</span>
-                </Button>
+                  {topCreators.map((creator, idx) => (
+                    <SwiperSlide key={creator.mal_id}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: idx * 0.05 }}
+                        whileHover={{
+                          scale: 1.04,
+                          boxShadow: "0 4px 24px #34d39933",
+                        }}
+                        className="h-full"
+                      >
+                        <Card className="bg-gray-800/60 border-green-900/50 hover:border-green-400 transition-colors h-full flex flex-col items-center justify-between shadow-lg rounded-xl overflow-hidden">
+                          <CardContent className="flex flex-col items-center p-6">
+                            <div className="relative w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-green-400 shadow-md">
+                              <Image
+                                src={creator.images.jpg.image_url}
+                                alt={creator.name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <h4 className="text-base font-bold text-green-200 text-center mb-1">
+                              {creator.name}
+                            </h4>
+                            <p className="text-gray-300 text-xs text-center mb-2">
+                              {creator.positions && creator.positions.length > 0
+                                ? creator.positions.join(", ")
+                                : "Creador de anime/manga"}
+                            </p>
+                            {/* Estadísticas adicionales */}
+                            <div className="flex flex-wrap gap-2 justify-center mb-2">
+                              {/* Número de obras (si existe) */}
+                              {typeof (creator as any).animeography === "object" && (
+                                <span className="inline-block bg-green-800/60 text-green-200 text-xs px-2 py-1 rounded font-semibold">
+                                  Obras: {(creator as any).animeography.length}
+                                </span>
+                              )}
+                              {/* Años activo (si existe) */}
+                              {typeof (creator as any).birthday === "string" && typeof (creator as any).years_active === "object" && (creator as any).years_active.length > 0 && (
+                                <span className="inline-block bg-green-800/60 text-green-200 text-xs px-2 py-1 rounded font-semibold">
+                                  Activo: {(creator as any).years_active[0]}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="inline-block bg-green-700/60 text-green-200 text-xs px-3 py-1 rounded-full font-semibold">
+                                Favoritos: {creator.favorites}
+                              </span>
+                            </div>
+                          </CardContent>
+                          {/* Enlace al perfil de MyAnimeList */}
+                          <div className="w-full text-center pb-4">
+                            <a
+                              href={`https://myanimelist.net/people/${creator.mal_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block text-green-300 hover:text-green-400 text-xs font-medium underline transition"
+                              aria-label={`Ver perfil de ${creator.name} en MyAnimeList`}
+                            >
+                              Ver perfil en MyAnimeList
+                            </a>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="py-12 bg-gray-900/80 border-t border-purple-900/30">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+              <div>
+                <h4 className="text-lg font-semibold mb-4 text-purple-400">
+                  Nebura
+                </h4>
+                <p className="text-gray-400 text-sm">
+                  El mejor lugar para explorar waifus, imágenes de anime y
+                  aprender sobre APIs relacionadas.
+                </p>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold mb-4 text-purple-400">
+                  Galerías
+                </h4>
+                <ul className="space-y-2 text-gray-400 text-sm">
+                  <li>
+                    <Link href="#" className="hover:text-purple-400">
+                      Waifus 4K
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="#" className="hover:text-purple-400">
+                      Mangas
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="#" className="hover:text-purple-400">
+                      Personajes
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="#" className="hover:text-purple-400">
+                      Fondos
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold mb-4 text-purple-400">
+                  APIs
+                </h4>
+                <ul className="space-y-2 text-gray-400 text-sm">
+                  <li>
+                    <Link
+                      href="https://waifu.pics/docs"
+                      className="hover:text-purple-400"
+                    >
+                      Waifu.pics
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="https://docs.nekos.best"
+                      className="hover:text-purple-400"
+                    >
+                      Nekos.best
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="https://nekosia.cat/documentation"
+                      className="hover:text-purple-400"
+                    >
+                      Nekosia
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold mb-4 text-purple-400">
+                  Contacto
+                </h4>
+                <div className="flex space-x-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-gray-400 hover:text-purple-400"
+                  >
+                    <Link href="mailto:contact@hiroshi-dev.me">
+                      <FiMail className="h-5 w-5" />
+                    </Link>
+                    <span className="sr-only">Email</span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-gray-400 hover:text-purple-400"
+                  >
+                    <Link href="https://github.com/Hiroshi025">
+                      <FiGithub className="h-5 w-5" />
+                    </Link>
+                    <span className="sr-only">GitHub</span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-gray-400 hover:text-purple-400"
+                  >
+                    <Link href="https://twitter.com/Hiroshi025">
+                      <FiTwitter className="h-5 w-5" />
+                    </Link>
+                    <span className="sr-only">Twitter</span>
+                  </Button>
+                </div>
               </div>
             </div>
+            <Separator className="bg-gray-700" />
+            <div className="mt-8 text-center text-gray-500 text-sm">
+              <p>
+                © {new Date().getFullYear()} Hiroshi025. Todos los derechos
+                reservados.
+              </p>
+              <p className="mt-2">
+                Las imágenes son propiedad de sus respectivos autores.
+              </p>
+            </div>
           </div>
-          <Separator className="bg-gray-700" />
-          <div className="mt-8 text-center text-gray-500 text-sm">
-            <p>
-              © {new Date().getFullYear()} Hiroshi025. Todos los derechos
-              reservados.
-            </p>
-            <p className="mt-2">
-              Las imágenes son propiedad de sus respectivos autores.
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </motion.div>
+    </AnimatePresence>
   );
 }
