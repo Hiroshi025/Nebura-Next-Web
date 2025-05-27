@@ -8,13 +8,8 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  FaArrowRight,
-  FaCode,
-  FaExpand,
-  FaGithub,
-  FaRandom,
-} from "react-icons/fa";
+import { FaArrowRight, FaCode, FaExpand, FaGithub, FaRandom } from "react-icons/fa";
+import { FiGithub, FiMail, FiTwitter } from "react-icons/fi";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 // Importa Swiper para carruseles
@@ -22,25 +17,15 @@ import { Swiper, SwiperSlide } from "swiper/react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+	Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+	Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@radix-ui/react-context-menu";
 
 // Datos de imágenes
 const imageData = {
@@ -146,11 +131,103 @@ fetch('https://nekos.best/api/v2/neko')
     categories: ["neko", "waifu", "husbando"],
     example: `// Obtener imagen con async/await
 async function getNekoImage() {
-  const response = await fetch('https://nekosia.cat/api/v1/images/neko');
+  const response = 
+     await fetch('https://nekosia.cat/api/v1/images/neko');
   const data = await response.json();
   return data.url || data.results[0]?.url;
 }`,
     docs: "https://nekosia.cat/documentation",
+  },
+  {
+    name: "Animechan API",
+    description: "API para obtener citas de personajes de anime",
+    endpoints: {
+      random: "https://animechan.vercel.app/api/random",
+      character:
+        "https://animechan.vercel.app/api/quotes/character?name=[name]",
+    },
+    categories: ["quotes", "anime", "characters"],
+    example: `// Obtener cita aleatoria
+async function getRandomQuote() {
+  try {
+    const response = await fetch('https://animechan.vercel.app/api/random');
+    const data = await response.json();
+    return \`\${data.anime} - \${data.character}: \${data.quote}\`;
+  } catch (error) {
+    console.error('Error fetching quote:', error);
+    return null;
+  }
+}`,
+    docs: "https://animechan.vercel.app/",
+  },
+  {
+    name: "Jikan API",
+    description:
+      "API no oficial de MyAnimeList para obtener información de anime y manga",
+    endpoints: {
+      search: "https://api.jikan.moe/v4/search/anime?q=[query]",
+      topAnime: "https://api.jikan.moe/v4/top/anime",
+      topManga: "https://api.jikan.moe/v4/top/manga",
+    },
+    categories: ["anime", "manga", "characters"],
+    example: `// Buscar anime por nombre
+async function searchAnime(query) {
+  try {
+    const response = await fetch(\`https://api.jikan.moe/v4/search/anime?q=\${query}\`);
+    const data = await response.json();
+    return data.data; // Lista de animes encontrados
+  } catch (error) {
+    console.error('Error fetching anime:', error);
+    return [];
+  }
+}`,
+    docs: "https://jikan.moe/docs",
+  },
+  {
+    name: "AniList API",
+    description:
+      "API oficial de AniList para obtener información de anime, manga y personajes",
+    endpoints: {
+      search: "https://graphql.anilist.co",
+      trendingAnime: "https://graphql.anilist.co",
+      trendingManga: "https://graphql.anilist.co",
+    },
+    categories: ["anime", "manga", "characters"],
+    example: `// Buscar anime con AniList
+async function searchAniList(query) {
+  const queryString = \`
+    query ($search: String) {
+      Page {
+        media(search: $search, type: ANIME) {
+          id
+          title {
+            romaji
+            english
+          }
+          coverImage {
+            large
+          }
+        }
+      }
+    }
+  \`;
+  const variables = { search: query };
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: queryString, variables }),
+    });
+    const data = await response.json();
+    return data.data.Page.media; // Lista de animes encontrados
+  } catch (error) {
+    console.error('Error fetching AniList:', error);
+    return [];
+  }
+}`,
+    docs: "https://anilist.gitbook.io/anilist-apiv2-docs/",
   },
 ];
 
@@ -203,7 +280,7 @@ export default function AnimePage() {
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-500">
-              WaifuHub
+              Nebura Gallery
             </span>
           </Link>
           <div className="flex items-center space-x-4">
@@ -858,21 +935,32 @@ export default function AnimePage() {
                   size="icon"
                   className="text-gray-400 hover:text-purple-400"
                 >
-                  <FaGithub className="h-5 w-5" />
+                  <Link href="mailto:contact@hiroshi-dev.me">
+                    <FiMail className="h-5 w-5" />
+                  </Link>
+                  <span className="sr-only">Email</span>
                 </Button>
+
                 <Button
                   variant="ghost"
                   size="icon"
                   className="text-gray-400 hover:text-purple-400"
                 >
-                  <FaGithub className="h-5 w-5" />
+                  <Link href="https://github.com/Hiroshi025">
+                    <FiGithub className="h-5 w-5" />
+                  </Link>
+                  <span className="sr-only">GitHub</span>
                 </Button>
+
                 <Button
                   variant="ghost"
                   size="icon"
                   className="text-gray-400 hover:text-purple-400"
                 >
-                  <FaGithub className="h-5 w-5" />
+                  <Link href="https://twitter.com/Hiroshi025">
+                    <FiTwitter className="h-5 w-5" />
+                  </Link>
+                  <span className="sr-only">Twitter</span>
                 </Button>
               </div>
             </div>

@@ -1,31 +1,20 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useAnimation } from "framer-motion";
 import { Briefcase, Code, GraduationCap, Rocket } from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FaNodeJs, FaPython, FaReact } from "react-icons/fa";
-import {
-  FiAward,
-  FiCode,
-  FiGithub,
-  FiLinkedin,
-  FiTwitter,
-  FiUser,
-} from "react-icons/fi";
+import { FiAward, FiCode, FiGithub, FiLinkedin, FiUser } from "react-icons/fi";
 import { SiExpress, SiMongodb, SiTypescript } from "react-icons/si";
+import { useInView } from "react-intersection-observer";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+	Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,6 +30,7 @@ interface Repo {
   owner: { login: string };
   language: string | null;
   stargazers_count: number;
+  topics?: string[];
 }
 
 const experiences = [
@@ -166,13 +156,94 @@ const PortfolioPage = () => {
     show: { opacity: 1, y: 0 },
   };
 
+  // Contador animado (puedes ponerlo después de la sección "Sobre Mí")
+  const StatsSection = () => {
+    const controls = useAnimation();
+    const [ref, inView] = useInView({ triggerOnce: true });
+
+    useEffect(() => {
+      if (inView) {
+        controls.start("visible");
+      }
+    }, [controls, inView]);
+
+    const stats = [
+      { label: "Años de experiencia", value: 3 },
+      { label: "Proyectos completados", value: 20 },
+      { label: "Contribuciones Open Source", value: 50 },
+      { label: "Clientes satisfechos", value: 15 },
+    ];
+
+    return (
+      <section className="py-16 px-4 bg-gray-900/70">
+        <div className="container mx-auto max-w-4xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {stats.map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                ref={ref}
+                initial={{ opacity: 0, y: 20 }}
+                animate={controls}
+                variants={{
+                  visible: { opacity: 1, y: 0, transition: { delay: i * 0.2 } },
+                }}
+                className="flex flex-col items-center"
+              >
+                <motion.span
+                  initial={{ textShadow: "0 0 0px #a78bfa" }}
+                  animate={{ textShadow: "0 0 16px #a78bfa" }}
+                  transition={{
+                    repeat: Infinity,
+                    repeatType: "mirror",
+                    duration: 1.5,
+                  }}
+                  className="text-4xl md:text-5xl font-bold text-purple-400"
+                >
+                  <AnimatedCounter to={stat.value} />
+                </motion.span>
+                <span className="text-gray-300 mt-2">{stat.label}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  // Componente contador animado
+  const AnimatedCounter = ({ to }: { to: number }) => {
+    const controls = useAnimation();
+    const [ref, inView] = useInView({ triggerOnce: true });
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+      // No need to use controls.start for count, handled by interval below
+    }, [inView, to]);
+
+    useEffect(() => {
+      let start = 0;
+      const end = to;
+      if (start === end) return;
+      let current = start;
+      const increment = end > start ? 1 : -1;
+      const timer = setInterval(() => {
+        current += increment;
+        setCount(current);
+        if (current === end) clearInterval(timer);
+      }, 30);
+      return () => clearInterval(timer);
+    }, [to]);
+
+    return <span ref={ref}>{count}</span>;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">
       <Head>
-        <title>Hiroshi025 | Desarrollador Full Stack</title>
+        <title>Hiroshi025 | Desarrollador</title>
         <meta
           name="description"
-          content="Portafolio profesional de Hiroshi025, desarrollador full stack especializado en React, Node.js y TypeScript"
+          content="Portafolio profesional de Hiroshi025, desarrollador backend especializado en Python, Node.js y TypeScript"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
@@ -244,8 +315,19 @@ const PortfolioPage = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative py-32 px-4 text-center">
+      <section className="relative py-32 px-4 text-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full opacity-20">
+            <Image
+              src="https://i.pinimg.com/736x/5f/5d/e0/5f5de0bb9f3fc40dd2d5c41279e983d9.jpg"
+              alt="Background anime"
+              fill
+              className="object-cover object-center"
+              quality={80}
+            />
+          </div>
+        </div>
         <div className="relative z-10 max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -258,8 +340,7 @@ const PortfolioPage = () => {
               </span>
             </h1>
             <h2 className="text-2xl md:text-3xl font-semibold text-gray-300 mb-8">
-              Desarrollador Full Stack | Especialista en Backend y
-              Microcontroladores
+              Desarrollador | Backend y Microcontroladores
             </h2>
             <p className="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
               Creo soluciones digitales innovadoras con tecnologías modernas y
@@ -269,7 +350,7 @@ const PortfolioPage = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button
                 asChild
-                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
+                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg shadow-purple-500/20"
                 size="lg"
               >
                 <Link href="#projects">Ver mis proyectos</Link>
@@ -277,7 +358,7 @@ const PortfolioPage = () => {
               <Button
                 asChild
                 variant="outline"
-                className="border-purple-400 text-purple-400 hover:bg-purple-900/50"
+                className="border-purple-400 text-purple-400 hover:bg-purple-900/50 hover:text-white shadow-lg shadow-purple-500/10"
                 size="lg"
               >
                 <Link href="#contact">Contacto</Link>
@@ -288,8 +369,11 @@ const PortfolioPage = () => {
       </section>
 
       {/* Sobre Mí */}
-      <section id="about" className="py-20 px-4 bg-gray-900/50">
-        <div className="container mx-auto max-w-6xl">
+      <section
+        id="about"
+        className="py-20 px-4 bg-gray-900/50 relative overflow-hidden"
+      >
+        <div className="container mx-auto max-w-6xl relative z-10">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -298,13 +382,14 @@ const PortfolioPage = () => {
             className="flex flex-col md:flex-row gap-12 items-center"
           >
             <div className="md:w-1/3 flex justify-center">
-              <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-purple-500/30">
+              <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-purple-500/30 shadow-xl">
                 <Image
                   src="/placeholder-user.jpg"
                   alt="Foto de Hiroshi025"
                   fill
                   className="object-cover"
                 />
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-600/20"></div>
               </div>
             </div>
 
@@ -316,8 +401,8 @@ const PortfolioPage = () => {
               </h2>
 
               <p className="text-gray-300 mb-6 text-lg">
-                Soy un desarrollador full stack con más de 3 años de experiencia
-                creando aplicaciones web modernas. Me especializo en JavaScript,
+                Soy un desarrollador backend con más de 3 años de experiencia
+                creando aplicaciones web modernas. Me especializo en C++,
                 TypeScript y el ecosistema React/Node.js.
               </p>
 
@@ -330,15 +415,15 @@ const PortfolioPage = () => {
               </p>
 
               <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full">
+                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full border border-purple-700/30">
                   <FiUser className="text-purple-400" />
-                  <span>Full Stack Developer</span>
+                  <span>Backend Developer</span>
                 </div>
-                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full">
+                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full border border-purple-700/30">
                   <FiCode className="text-purple-400" />
                   <span>+20 Proyectos</span>
                 </div>
-                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full">
+                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full border border-purple-700/30">
                   <FiAward className="text-purple-400" />
                   <span>Open Source Contributor</span>
                 </div>
@@ -348,13 +433,16 @@ const PortfolioPage = () => {
         </div>
       </section>
 
+      <StatsSection />
+
       {/* Habilidades */}
-      <section id="skills" className="py-20 px-4">
-        <div className="container mx-auto max-w-6xl">
+      <section id="skills" className="py-20 px-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10 [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+        <div className="container mx-auto max-w-6xl relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
             viewport={{ once: true }}
           >
             <h2 className="text-3xl font-bold mb-12 text-center">
@@ -391,7 +479,7 @@ const PortfolioPage = () => {
                 <h3 className="text-xl font-semibold text-gray-300 mb-6">
                   Otras Tecnologías
                 </h3>
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap gap-3">
                   {[
                     "Bootstrap",
                     "Tailwind CSS",
@@ -409,7 +497,7 @@ const PortfolioPage = () => {
                     <Badge
                       key={index}
                       variant="secondary"
-                      className="bg-gray-800/50 hover:bg-gray-700/50"
+                      className="bg-gray-800/50 hover:bg-gray-700/50 border border-purple-700/30 text-gray-300"
                     >
                       {tech}
                     </Badge>
@@ -442,8 +530,12 @@ const PortfolioPage = () => {
       </section>
 
       {/* Proyectos */}
-      <section id="projects" className="py-20 px-4 bg-gray-900/50">
-        <div className="container mx-auto max-w-6xl">
+      <section
+        id="projects"
+        className="py-20 px-4 bg-gray-900/50 relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-[url('/grid-dark.svg')] bg-center opacity-10 [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+        <div className="container mx-auto max-w-6xl relative z-10">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -457,16 +549,16 @@ const PortfolioPage = () => {
             </h2>
 
             <Tabs defaultValue="recent" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 max-w-xs mx-auto bg-gray-800">
+              <TabsList className="grid w-full grid-cols-2 max-w-xs mx-auto bg-gray-800 border border-purple-700/30">
                 <TabsTrigger
                   value="featured"
-                  className="data-[state=active]:bg-purple-900/50"
+                  className="data-[state=active]:bg-purple-900/50 data-[state=active]:text-purple-300"
                 >
                   Destacados
                 </TabsTrigger>
                 <TabsTrigger
                   value="recent"
-                  className="data-[state=active]:bg-purple-900/50"
+                  className="data-[state=active]:bg-purple-900/50 data-[state=active]:text-purple-300"
                 >
                   Recientes
                 </TabsTrigger>
@@ -492,15 +584,15 @@ const PortfolioPage = () => {
                   >
                     {featuredRepos.map((repo) => (
                       <motion.div key={repo.id} variants={item}>
-                        <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 hover:border-purple-500/70 transition-colors h-full flex flex-col rounded-xl shadow-lg">
+                        <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 hover:border-purple-500/70 transition-all hover:shadow-lg hover:shadow-purple-500/20 h-full flex flex-col rounded-xl group">
                           <CardHeader>
                             <div className="flex justify-between items-start">
-                              <CardTitle className="text-xl text-white font-bold">
+                              <CardTitle className="text-xl text-white font-bold group-hover:text-purple-400 transition-colors">
                                 {repo.name}
                               </CardTitle>
                               <Badge
                                 variant="outline"
-                                className="text-xs border border-purple-700 text-purple-300 bg-gray-800/70"
+                                className="text-xs border border-purple-700 text-purple-300 bg-gray-800/70 group-hover:bg-purple-900/30 transition-colors"
                               >
                                 {repo.language || "Multi"}
                               </Badge>
@@ -516,6 +608,19 @@ const PortfolioPage = () => {
                                 {new Date(repo.created_at).toLocaleDateString()}
                               </span>
                             </div>
+                            {repo.topics && repo.topics.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {repo.topics.slice(0, 3).map((topic, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="outline"
+                                    className="text-xs bg-gray-800/50 border-purple-700/30 text-purple-300"
+                                  >
+                                    {topic}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                             {repo.stargazers_count > 0 && (
                               <div className="flex items-center gap-1 text-yellow-400">
                                 <svg
@@ -539,7 +644,7 @@ const PortfolioPage = () => {
                             <Button
                               asChild
                               variant="outline"
-                              className="w-full border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg font-semibold"
+                              className="w-full border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg font-semibold group-hover:shadow-purple-500/20 transition-all"
                             >
                               <Link href={repo.html_url} target="_blank">
                                 <FiGithub className="mr-2" /> Ver en GitHub
@@ -573,15 +678,15 @@ const PortfolioPage = () => {
                   >
                     {recentRepos.map((repo) => (
                       <motion.div key={repo.id} variants={item}>
-                        <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 hover:border-purple-500/70 transition-colors h-full flex flex-col rounded-xl shadow-lg">
+                        <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 hover:border-purple-500/70 transition-all hover:shadow-lg hover:shadow-purple-500/20 h-full flex flex-col rounded-xl group">
                           <CardHeader>
                             <div className="flex justify-between items-start">
-                              <CardTitle className="text-xl text-white font-bold">
+                              <CardTitle className="text-xl text-white font-bold group-hover:text-purple-400 transition-colors">
                                 {repo.name}
                               </CardTitle>
                               <Badge
                                 variant="outline"
-                                className="text-xs border border-purple-700 text-purple-300 bg-gray-800/70"
+                                className="text-xs border border-purple-700 text-purple-300 bg-gray-800/70 group-hover:bg-purple-900/30 transition-colors"
                               >
                                 {repo.language || "Multi"}
                               </Badge>
@@ -597,12 +702,25 @@ const PortfolioPage = () => {
                                 {new Date(repo.created_at).toLocaleDateString()}
                               </span>
                             </div>
+                            {repo.topics && repo.topics.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {repo.topics.slice(0, 3).map((topic, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="outline"
+                                    className="text-xs bg-gray-800/50 border-purple-700/30 text-purple-300"
+                                  >
+                                    {topic}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </CardContent>
                           <CardFooter>
                             <Button
                               asChild
                               variant="outline"
-                              className="w-full border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg font-semibold"
+                              className="w-full border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg font-semibold group-hover:shadow-purple-500/20 transition-all"
                             >
                               <Link href={repo.html_url} target="_blank">
                                 <FiGithub className="mr-2" /> Ver en GitHub
@@ -621,8 +739,12 @@ const PortfolioPage = () => {
       </section>
 
       {/* Experiencia */}
-      <section id="experience" className="py-20 px-4 bg-gray-900/50">
-        <div className="container mx-auto max-w-6xl">
+      <section
+        id="experience"
+        className="py-20 px-4 bg-gray-900/50 relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10 [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+        <div className="container mx-auto max-w-6xl relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -656,7 +778,7 @@ const PortfolioPage = () => {
                   className="relative flex flex-col md:flex-row items-center md:items-start gap-8"
                 >
                   {/* Contenido para móvil */}
-                  <div className="md:hidden w-full bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl shadow-lg p-6 border border-purple-700/30">
+                  <div className="md:hidden w-full bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl shadow-lg p-6 border border-purple-700/30 hover:border-purple-500/50 transition-colors">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg border-2 border-purple-400">
                         {exp.icon}
@@ -685,7 +807,7 @@ const PortfolioPage = () => {
 
                   {/* Desktop: Cuadro a la izquierda, icono en el centro, año a la derecha */}
                   <div className="hidden md:flex md:w-1/2 flex-col items-end pr-12 text-right">
-                    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl border border-purple-700/30 p-6 shadow-lg w-full max-w-lg">
+                    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl border border-purple-700/30 p-6 shadow-lg w-full max-w-lg hover:border-purple-500/50 transition-colors">
                       <h3 className="text-2xl font-bold text-white">
                         {exp.title}
                       </h3>
@@ -706,7 +828,7 @@ const PortfolioPage = () => {
                     </div>
                   </div>
 
-                  <div className="hidden md:flex w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 border-4 border-purple-400 items-center justify-center shadow-xl z-10">
+                  <div className="hidden md:flex w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 border-4 border-purple-400 items-center justify-center shadow-xl z-10 hover:shadow-purple-500/30 transition-shadow">
                     {exp.icon}
                   </div>
 
@@ -739,7 +861,7 @@ const PortfolioPage = () => {
             </p>
             <Button
               asChild
-              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-full font-medium shadow-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300"
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-full font-medium shadow-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-purple-500/30 hover:shadow-purple-500/40"
               size="lg"
             >
               <a href="#contact">Contactar Ahora</a>
@@ -748,9 +870,63 @@ const PortfolioPage = () => {
         </div>
       </section>
 
+      {/* Stack Tecnológico Favorito */}
+      <section
+        id="stack"
+        className="py-20 px-4 bg-gray-900/60 relative overflow-hidden"
+      >
+        <div className="container mx-auto max-w-4xl relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl font-bold mb-8 text-center">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                Mi Stack Favorito
+              </span>
+            </h2>
+            <div className="flex flex-wrap justify-center gap-8 mb-8">
+              <div className="flex flex-col items-center">
+                <FaPython className="text-yellow-400 text-5xl mb-2" />
+                <span className="text-gray-300">Python</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-blue-400 text-5xl mb-2 font-bold">C++</span>
+                <span className="text-gray-300">C++</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <SiTypescript className="text-blue-600 text-5xl mb-2" />
+                <span className="text-gray-300">TypeScript</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <FaNodeJs className="text-green-500 text-5xl mb-2" />
+                <span className="text-gray-300">Node.js</span>
+              </div>
+            </div>
+            <p className="text-gray-400 text-center max-w-2xl mx-auto">
+              Mi stack favorito combina la potencia de <b>Python</b> y <b>C++</b> para lógica avanzada y automatización, junto con <b>TypeScript</b> y <b>Node.js</b> para construir APIs robustas y escalables. Utilizo <b>Prisma</b> como ORM moderno para bases de datos, logrando así soluciones eficientes, seguras y de alto rendimiento.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Contacto */}
-      <section id="contact" className="py-20 px-4 bg-gray-900/50">
-        <div className="container mx-auto max-w-4xl text-center">
+      <section
+        id="contact"
+        className="py-20 px-4 bg-gray-900/50 relative overflow-hidden"
+      >
+        <div className="absolute inset-0 opacity-10">
+          <Image
+            src="https://i.pinimg.com/736x/5f/5d/e0/5f5de0bb9f3fc40dd2d5c41279e983d9.jpg"
+            alt="Background anime"
+            fill
+            className="object-cover object-center"
+            quality={80}
+          />
+        </div>
+        <div className="container mx-auto max-w-4xl text-center relative z-10">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -769,71 +945,171 @@ const PortfolioPage = () => {
             </p>
 
             <div className="flex flex-wrap justify-center gap-6 mb-12">
+              {/* Botón de correo */}
               <Button
                 asChild
                 variant="outline"
-                className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white shadow-lg shadow-purple-500/10"
               >
                 <Link href="mailto:hiroshi@example.com">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
                     height="24"
+                    fill="none"
                     viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 12l-4-4-4 4m8 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v4"
+                    />
+                  </svg>
+                  <span className="ml-2">contact@hiroshi-dev.me</span>
+                </Link>
+              </Button>
+              {/* Botón LinkedIn */}
+              <Button
+                asChild
+                variant="outline"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white shadow-lg shadow-purple-500/10"
+              >
+                <Link
+                  href="https://www.linkedin.com/in/hiroshi025"
+                  target="_blank"
+                >
+                  <FiLinkedin className="mr-2" />
+                  LinkedIn
+                </Link>
+              </Button>
+              {/* Botón GitHub */}
+              <Button
+                asChild
+                variant="outline"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white shadow-lg shadow-purple-500/10"
+              >
+                <Link href="https://github.com/Hiroshi025" target="_blank">
+                  <FiGithub className="mr-2" />
+                  GitHub
+                </Link>
+              </Button>
+              {/* Botón para descargar CV */}
+              <Button
+                asChild
+                variant="outline"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white shadow-lg shadow-purple-500/10"
+              >
+                <a href="/cv-hiroshi025.pdf" download>
+                  <svg
+                    className="mr-2"
+                    width="20"
+                    height="20"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="mr-2"
+                    viewBox="0 0 24 24"
                   >
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
+                    <path d="M12 5v14M19 12l-7 7-7-7" />
                   </svg>
-                  Enviar Email
-                </Link>
-              </Button>
-
-              <Button
-                asChild
-                variant="outline"
-                className="border-gray-500 text-gray-300 hover:bg-gray-700 hover:text-white"
-              >
-                <Link href="https://github.com/Hiroshi025" target="_blank">
-                  <FiGithub className="mr-2" /> GitHub
-                </Link>
-              </Button>
-
-              <Button
-                asChild
-                variant="outline"
-                className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
-              >
-                <Link href="https://linkedin.com/in/Hiroshi025" target="_blank">
-                  <FiLinkedin className="mr-2" /> LinkedIn
-                </Link>
-              </Button>
-
-              <Button
-                asChild
-                variant="outline"
-                className="border-sky-500 text-sky-400 hover:bg-sky-500 hover:text-white"
-              >
-                <Link href="https://twitter.com/Hiroshi025" target="_blank">
-                  <FiTwitter className="mr-2" /> Twitter
-                </Link>
+                  Descargar CV
+                </a>
               </Button>
             </div>
 
-            <div className="text-gray-500 text-sm">
-              <p>
-                © {new Date().getFullYear()} Hiroshi025. Todos los derechos
-                reservados.
-              </p>
-              <p className="mt-2">
-                Diseñado y desarrollado con ❤️ por mí mismo
-              </p>
+            {/* Horarios de disponibilidad */}
+            <div className="mb-8 flex flex-col items-center">
+              <div className="flex items-center gap-2 text-purple-400 font-semibold">
+                <svg
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                <span>Horario de respuesta:</span>
+              </div>
+              <span className="text-gray-400 text-sm mt-1">
+                Lunes a Viernes, 9:00 - 18:00 (GMT-5)
+              </span>
             </div>
+
+            {/* Formulario de contacto con animaciones sutiles */}
+            <form
+              className="bg-gray-800/70 rounded-xl p-8 max-w-2xl mx-auto shadow-lg border border-purple-700/30 flex flex-col gap-6"
+              action="mailto:hiroshi@example.com"
+              method="POST"
+              encType="text/plain"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                viewport={{ once: true }}
+                className="flex flex-col gap-2 text-left"
+              >
+                <label htmlFor="name" className="text-gray-300 font-medium">
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  required
+                  className="px-4 py-2 rounded-lg bg-gray-900 border border-purple-700/30 text-white focus:outline-none focus:border-purple-500 transition-all duration-200 focus:scale-105"
+                  placeholder="Tu nombre"
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                viewport={{ once: true }}
+                className="flex flex-col gap-2 text-left"
+              >
+                <label htmlFor="email" className="text-gray-300 font-medium">
+                  Correo electrónico
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  required
+                  className="px-4 py-2 rounded-lg bg-gray-900 border border-purple-700/30 text-white focus:outline-none focus:border-purple-500 transition-all duration-200 focus:scale-105"
+                  placeholder="tucorreo@ejemplo.com"
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                viewport={{ once: true }}
+                className="flex flex-col gap-2 text-left"
+              >
+                <label htmlFor="message" className="text-gray-300 font-medium">
+                  Mensaje
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows={5}
+                  required
+                  className="px-4 py-2 rounded-lg bg-gray-900 border border-purple-700/30 text-white focus:outline-none focus:border-purple-500 transition-all duration-200 focus:scale-105"
+                  placeholder="¿En qué puedo ayudarte?"
+                />
+              </motion.div>
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-full font-medium px-8 py-3 shadow-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-purple-500/30 hover:shadow-purple-500/40"
+              >
+                Enviar mensaje
+              </Button>
+            </form>
           </motion.div>
         </div>
       </section>
