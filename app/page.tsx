@@ -1,83 +1,205 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { Briefcase, Code, GraduationCap, Rocket } from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import Particles from "react-tsparticles";
+import { FaNodeJs, FaPython, FaReact } from "react-icons/fa";
+import {
+  FiAward,
+  FiCode,
+  FiGithub,
+  FiLinkedin,
+  FiTwitter,
+  FiUser,
+} from "react-icons/fi";
+import { SiExpress, SiMongodb, SiTypescript } from "react-icons/si";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function PortfolioPage() {
-  interface Repo {
-    id: number;
-    name: string;
-    description: string | null;
-    html_url: string;
-    created_at: string;
-    license: { name: string } | null;
-    homepage: string | null;
-    owner: { login: string };
-  }
+interface Repo {
+  id: number;
+  name: string;
+  description: string | null;
+  html_url: string;
+  created_at: string;
+  license: { name: string } | null;
+  homepage: string | null;
+  owner: { login: string };
+  language: string | null;
+  stargazers_count: number;
+}
 
+const experiences = [
+  {
+    id: 1,
+    year: "2025",
+    title: "Desarrollador Full Stack",
+    company: "Autónomo/Freelance",
+    description:
+      "Desarrollo de aplicaciones web completas con React, Node.js y bases de datos modernas. Especialización en arquitecturas escalables y buenas prácticas de código.",
+    icon: <Code className="text-purple-500" size={24} />,
+    tags: ["React", "TypeScript", "Node.js", "MongoDB"],
+  },
+  {
+    id: 2,
+    year: "2022 - 2023",
+    title: "Contribuidor Open Source",
+    company: "Proyectos GitHub",
+    description:
+      "Contribuciones significativas a proyectos de código abierto, mejorando documentación, resolviendo issues y añadiendo nuevas funcionalidades.",
+    icon: <Rocket className="text-blue-500" size={24} />,
+    tags: ["Open Source", "Git", "Comunidad"],
+  },
+  {
+    id: 3,
+    year: "2021 - 2022",
+    title: "Bootcamp Intensivo",
+    company: "Full Stack Development",
+    description:
+      "Formación intensiva en desarrollo web moderno, abarcando fundamentos, frameworks frontend, backend y despliegue de aplicaciones.",
+    icon: <GraduationCap className="text-green-500" size={24} />,
+    tags: ["Bootcamp", "Formación", "Proyectos"],
+  },
+  {
+    id: 4,
+    year: "2020 - 2021",
+    title: "Primeros Proyectos",
+    company: "Aprendizaje Autodidacta",
+    description:
+      "Exploración de tecnologías web mediante la creación de proyectos personales y pequeños trabajos freelance.",
+    icon: <Briefcase className="text-yellow-500" size={24} />,
+    tags: ["HTML/CSS", "JavaScript", "PHP", "WordPress"],
+  },
+];
+
+const PortfolioPage = () => {
   const [repos, setRepos] = useState<Repo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("featured");
 
+  // Datos de tecnologías con niveles de habilidad
+  const technologies = [
+    { name: "React", icon: <FaReact className="text-blue-400" />, level: 85 },
+    {
+      name: "TypeScript",
+      icon: <SiTypescript className="text-blue-600" />,
+      level: 80,
+    },
+    {
+      name: "Node.js",
+      icon: <FaNodeJs className="text-green-500" />,
+      level: 75,
+    },
+    {
+      name: "Python",
+      icon: <FaPython className="text-yellow-400" />,
+      level: 70,
+    },
+    {
+      name: "MongoDB",
+      icon: <SiMongodb className="text-green-400" />,
+      level: 65,
+    },
+    {
+      name: "Express",
+      icon: <SiExpress className="text-gray-400" />,
+      level: 70,
+    },
+    { name: "HTML5", icon: <FiCode className="text-orange-500" />, level: 90 },
+    { name: "CSS3", icon: <FiCode className="text-blue-500" />, level: 85 },
+  ];
+
+  // Obtener repositorios de GitHub
   useEffect(() => {
     const fetchRepos = async () => {
-      const response = await fetch(
-        "https://api.github.com/users/Hiroshi025/repos"
-      );
-      const data = await response.json();
-      setRepos(data);
+      try {
+        const response = await fetch(
+          "https://api.github.com/users/Hiroshi025/repos"
+        );
+        const data = await response.json();
+        setRepos(data);
+      } catch (error) {
+        console.error("Error fetching repos:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchRepos();
   }, []);
 
-  const technologies = [
-    { name: "Bootstrap", logo: "https://skillicons.dev/icons?i=bootstrap" },
-    { name: "HTML5", logo: "https://skillicons.dev/icons?i=html" },
-    { name: "CSS3", logo: "https://skillicons.dev/icons?i=css" },
-    { name: "VS Code", logo: "https://skillicons.dev/icons?i=vscode" },
-    { name: "GitHub", logo: "https://skillicons.dev/icons?i=github" },
-    { name: "Node.js", logo: "https://skillicons.dev/icons?i=nodejs" },
-    { name: "Python", logo: "https://skillicons.dev/icons?i=python" },
-    { name: "JavaScript", logo: "https://skillicons.dev/icons?i=javascript" },
-    { name: "TypeScript", logo: "https://skillicons.dev/icons?i=typescript" },
-    { name: "Express.js", logo: "https://skillicons.dev/icons?i=express" },
-    { name: "MongoDB", logo: "https://skillicons.dev/icons?i=mongodb" },
-    { name: "C", logo: "https://skillicons.dev/icons?i=c" },
-  ];
+  // Filtros para proyectos
+  const featuredRepos = repos.filter((repo) => repo.stargazers_count > 0);
+  const recentRepos = [...repos]
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    .slice(0, 6);
+
+  // Animaciones
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  };
 
   return (
-    <main className="min-h-screen bg-gray-950 text-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">
       <Head>
-        <title>Portafolio de Hiroshi025</title>
+        <title>Hiroshi025 | Desarrollador Full Stack</title>
         <meta
           name="description"
-          content="Portafolio de Hiroshi025, desarrollador web y creador de soluciones tecnológicas."
+          content="Portafolio profesional de Hiroshi025, desarrollador full stack especializado en React, Node.js y TypeScript"
         />
-        <meta
-          name="keywords"
-          content="Hiroshi025, desarrollo web, portafolio, tecnologías, proyectos"
-        />
-        <meta name="author" content="Hiroshi025" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
-      {/* Navigation */}
-      <nav className="border-b border-purple-900/50 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+
+      {/* Navegación */}
+      <nav className="sticky top-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-purple-900/30">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <Link href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-md flex items-center justify-center">
               <span className="text-white font-bold">H</span>
             </div>
             <span className="text-xl font-bold text-white">Hiroshi025</span>
-          </div>
-          <div className="flex items-center space-x-6">
+          </Link>
+
+          <div className="hidden md:flex items-center space-x-6">
             <Link
-              href="#technologies"
+              href="#about"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
-              Tecnologías
+              Sobre mí
+            </Link>
+            <Link
+              href="#skills"
+              className="text-gray-300 hover:text-purple-400 transition-colors"
+            >
+              Habilidades
             </Link>
             <Link
               href="#projects"
@@ -85,392 +207,638 @@ export default function PortfolioPage() {
             >
               Proyectos
             </Link>
+            <Link
+              href="#experience"
+              className="text-gray-300 hover:text-purple-400 transition-colors"
+            >
+              Experiencia
+            </Link>
             <Button
-              onClick={() => (window.location.href = "/proyect")}
+              asChild
               variant="outline"
               className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
             >
-              Ir a Nebura
+              <Link href="/nebura">Ir a Nebura</Link>
             </Button>
           </div>
+
+          {/* Menú móvil */}
+          <Button variant="ghost" className="md:hidden">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </Button>
         </div>
       </nav>
 
-      {/* Header Section */}
-      <section
-        className="py-32 text-center bg-cover bg-center relative"
-        style={{ backgroundImage: "url('/placeholder.jpg')" }}
-      >
-        <div className="absolute inset-0 bg-black/50"></div>
-        <div className="relative z-10 flex flex-col items-center">
-          <Image
-            src="/placeholder-user.jpg"
-            alt="Foto de perfil"
-            width={150}
-            height={150}
-            className="rounded-full border-4 border-purple-500 mb-6"
-          />
-          <h1 className="text-5xl font-extrabold text-white mb-4">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Hiroshi025
-            </span>
-          </h1>
-          <p className="text-gray-300 max-w-3xl mx-auto mb-8 text-xl leading-relaxed">
-            Soy un desarrollador apasionado por crear proyectos innovadores y
-            soluciones tecnológicas. Me especializo en desarrollo web, APIs y
-            herramientas multiplataforma. Mi objetivo es ofrecer soluciones
-            eficientes y creativas para los desafíos tecnológicos.
-          </p>
-          <div className="flex space-x-4">
-            <Link
-              href="https://github.com/Hiroshi025"
-              target="_blank"
-              className="text-gray-300 hover:text-purple-400 transition-colors"
-            >
-              <i className="fab fa-github text-2xl"></i>
-            </Link>
-            <Link
-              href="https://linkedin.com/in/Hiroshi025"
-              target="_blank"
-              className="text-gray-300 hover:text-purple-400 transition-colors"
-            >
-              <i className="fab fa-linkedin text-2xl"></i>
-            </Link>
-            <Link
-              href="https://twitter.com/Hiroshi025"
-              target="_blank"
-              className="text-gray-300 hover:text-purple-400 transition-colors"
-            >
-              <i className="fab fa-twitter text-2xl"></i>
-            </Link>
-          </div>
+      {/* Hero Section */}
+      <section className="relative py-32 px-4 text-center">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                Hiroshi025
+              </span>
+            </h1>
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-300 mb-8">
+              Desarrollador Full Stack | Especialista en Backend y
+              Microcontroladores
+            </h2>
+            <p className="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
+              Creo soluciones digitales innovadoras con tecnologías modernas y
+              código limpio.
+            </p>
+
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Button
+                asChild
+                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
+                size="lg"
+              >
+                <Link href="#projects">Ver mis proyectos</Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="border-purple-400 text-purple-400 hover:bg-purple-900/50"
+                size="lg"
+              >
+                <Link href="#contact">Contacto</Link>
+              </Button>
+            </div>
+          </motion.div>
         </div>
-        <Particles
-          options={{
-            particles: {
-              number: { value: 50 },
-              shape: { type: "star" },
-              move: { speed: 1 },
-              color: { value: "#ff69b4" },
-            },
-          }}
-        />
       </section>
 
-      {/* Technologies Section */}
-      <section id="technologies" className="py-20">
-        <div className="max-w-[60%] mx-auto">
-          <h2 className="text-3xl font-bold text-center text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Tecnologías
-            </span>
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-            {technologies.map((tech, index) => (
-              <div
-                key={index}
-                className="flex flex-col items-center bg-gray-800/50 p-4 rounded-lg shadow-md hover:shadow-purple-500/50 transition-shadow"
-              >
+      {/* Sobre Mí */}
+      <section id="about" className="py-20 px-4 bg-gray-900/50">
+        <div className="container mx-auto max-w-6xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="flex flex-col md:flex-row gap-12 items-center"
+          >
+            <div className="md:w-1/3 flex justify-center">
+              <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-purple-500/30">
                 <Image
-                  src={tech.logo}
-                  alt={tech.name}
-                  width={64}
-                  height={64}
-                  className="mb-2"
+                  src="/placeholder-user.jpg"
+                  alt="Foto de Hiroshi025"
+                  fill
+                  className="object-cover"
                 />
-                <span className="text-gray-300 font-semibold">{tech.name}</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section id="stats" className="py-20 bg-gray-950">
-        <div className="max-w-[60%] mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-blue-600">
-              Mis Stats
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-white">
-              <h3 className="text-5xl font-bold">3+</h3>
-              <p className="text-gray-300">Años de Experiencia</p>
             </div>
-            <div className="text-white">
-              <h3 className="text-5xl font-bold">20+</h3>
-              <p className="text-gray-300">Proyectos Completados</p>
-            </div>
-            <div className="text-white">
-              <h3 className="text-5xl font-bold">12</h3>
-              <p className="text-gray-300">Tecnologías Dominadas</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Hobbies Section */}
-      <section id="hobbies" className="py-20 bg-gray-900">
-        <div className="max-w-[60%] mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Mis Intereses
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Anime y Manga",
-                description:
-                  "Fanático de series como Naruto, One Piece y Attack on Titan.",
-              },
-              {
-                title: "Videojuegos",
-                description: "Me encanta jugar RPGs y juegos de estrategia.",
-              },
-              {
-                title: "Tecnología",
-                description:
-                  "Siempre estoy explorando nuevas herramientas y frameworks.",
-              },
-            ].map((hobby, index) => (
-              <div
-                key={index}
-                className="bg-gray-800/50 p-6 rounded-lg shadow-md hover:shadow-purple-500/50 transition-shadow"
-              >
-                <h3 className="text-xl font-bold text-white mb-2">
-                  {hobby.title}
-                </h3>
-                <p className="text-gray-300">{hobby.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            <div className="md:w-2/3">
+              <h2 className="text-3xl font-bold mb-6">
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                  Sobre Mí
+                </span>
+              </h2>
 
-      {/* Projects Section */}
-      <section id="projects" className="py-20">
-        <div className="max-w-[60%] mx-auto">
-          <h2 className="text-3xl font-bold text-center text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Proyectos
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-center">
-            {repos.map((repo) => (
-              <Card
-                key={repo.id}
-                className="bg-gray-800/50 backdrop-blur-sm border-purple-900/50 hover:border-purple-500/70 transition-all duration-300 overflow-hidden group"
-              >
-                <CardContent className="p-6 relative flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-white group-hover:text-purple-400 transition-colors">
-                      {repo.name}
-                    </h3>
-                    <span className="text-sm text-gray-400 bg-gray-700 px-2 py-1 rounded-full">
-                      {repo.license?.name || "Sin Licencia"}
-                    </span>
-                  </div>
-                  <p className="text-gray-400 mb-4">
-                    {repo.description || "Sin descripción"}
-                  </p>
-                  <ul className="text-gray-400 text-sm space-y-1 mb-4">
-                    <li>
-                      <strong>Creado:</strong>{" "}
-                      {new Date(repo.created_at).toLocaleDateString()}
-                    </li>
-                    <li>
-                      <strong>Owner:</strong> {repo.owner.login}
-                    </li>
-                  </ul>
-                  <Button
-                    onClick={() => window.open(repo.html_url, "_blank")}
-                    className="mt-auto bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
-                  >
-                    Ver Proyecto
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+              <p className="text-gray-300 mb-6 text-lg">
+                Soy un desarrollador full stack con más de 3 años de experiencia
+                creando aplicaciones web modernas. Me especializo en JavaScript,
+                TypeScript y el ecosistema React/Node.js.
+              </p>
 
-      {/* Services Section */}
-      <section id="services" className="py-20 bg-gray-900">
-        <div className="max-w-[60%] mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Servicios
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Desarrollo Web",
-                description: "Creación de sitios web modernos y responsivos.",
-              },
-              {
-                title: "APIs y Backend",
-                description:
-                  "Diseño y desarrollo de APIs robustas y escalables.",
-              },
-              {
-                title: "Consultoría Técnica",
-                description: "Asesoramiento en proyectos tecnológicos.",
-              },
-            ].map((service, index) => (
-              <div
-                key={index}
-                className="bg-gray-800/50 p-6 rounded-lg shadow-md hover:shadow-purple-500/50 transition-shadow"
-              >
-                <h3 className="text-xl font-bold text-white mb-2">
-                  {service.title}
-                </h3>
-                <p className="text-gray-300">{service.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              <p className="text-gray-400 mb-8">
+                Mi pasión por la programación comenzó cuando descubrí cómo crear
+                mis propias soluciones tecnológicas. Desde entonces, he
+                trabajado en diversos proyectos, desde pequeñas aplicaciones
+                hasta sistemas complejos, siempre buscando aprender y mejorar
+                mis habilidades.
+              </p>
 
-      {/* Roadmap Section */}
-      <section id="roadmap" className="py-20 bg-gray-900">
-        <div className="max-w-[60%] mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Planes Futuros
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Aprender Rust",
-                description:
-                  "Explorar el lenguaje Rust para desarrollo de sistemas.",
-              },
-              {
-                title: "Contribuir a Open Source",
-                description: "Participar en más proyectos de código abierto.",
-              },
-              {
-                title: "Crear un SaaS",
-                description: "Lanzar un producto como servicio (SaaS).",
-              },
-            ].map((plan, index) => (
-              <div
-                key={index}
-                className="bg-gray-800/50 p-6 rounded-lg shadow-md hover:shadow-purple-500/50 transition-shadow"
-              >
-                <h3 className="text-xl font-bold text-white mb-2">
-                  {plan.title}
-                </h3>
-                <p className="text-gray-300">{plan.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Tools Section */}
-      <section id="tools" className="py-20 bg-gray-950">
-        <div className="max-w-[60%] mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Herramientas Favoritas
-            </span>
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              {
-                name: "Visual Studio Code",
-                logo: "https://skillicons.dev/icons?i=vscode",
-              },
-              { name: "GitHub", logo: "https://skillicons.dev/icons?i=github" },
-              { name: "Figma", logo: "https://skillicons.dev/icons?i=figma" },
-              {
-                name: "Postman",
-                logo: "https://skillicons.dev/icons?i=postman",
-              },
-            ].map((tool, index) => (
-              <div key={index} className="flex flex-col items-center">
-                <Image
-                  src={tool.logo}
-                  alt={tool.name}
-                  width={64}
-                  height={64}
-                  className="mb-4"
-                />
-                <span className="text-gray-300">{tool.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Timeline Section */}
-      <section id="timeline" className="py-20 bg-gray-950">
-        <div className="max-w-[60%] mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Mi Trayectoria
-            </span>
-          </h2>
-          <div className="relative">
-            <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-purple-500"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {[
-                {
-                  year: "2020",
-                  title: "Inicio en Desarrollo Web",
-                  description:
-                    "Comencé mi viaje aprendiendo HTML, CSS y JavaScript. Creé mis primeros proyectos personales y descubrí mi pasión por el desarrollo web.",
-                },
-                {
-                  year: "2021",
-                  title: "Primer Proyecto Freelance",
-                  description:
-                    "Desarrollé un sitio web para un cliente local, aplicando mis conocimientos en diseño responsivo y buenas prácticas de desarrollo.",
-                },
-                {
-                  year: "2022",
-                  title: "Contribuciones Open Source",
-                  description:
-                    "Participé en proyectos de código abierto en GitHub, colaborando con desarrolladores de mis mismas areas.",
-                },
-                {
-                  year: "2023",
-                  title: "Especialización en React y Node.js",
-                  description:
-                    "Me especialicé en el desarrollo de aplicaciones web modernas utilizando React para el frontend y Node.js para el backend.",
-                },
-                {
-                  year: "2024",
-                  title: "Lanzamiento de Nebura",
-                  description:
-                    "Creé y lancé Nebura, un proyecto personal que combina mis habilidades técnicas con mi pasión por la tecnología.",
-                },
-              ].map((event, index) => (
-                <div
-                  key={index}
-                  className={`relative bg-gray-800/50 p-6 rounded-lg shadow-md hover:shadow-purple-500/50 transition-shadow ${
-                    index % 2 === 0 ? "md:ml-auto" : "md:mr-auto"
-                  }`}
-                >
-                  <div className="absolute top-1/2 transform -translate-y-1/2 -left-4 w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                    {event.year}
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    {event.title}
-                  </h3>
-                  <p className="text-gray-300">{event.description}</p>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full">
+                  <FiUser className="text-purple-400" />
+                  <span>Full Stack Developer</span>
                 </div>
+                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full">
+                  <FiCode className="text-purple-400" />
+                  <span>+20 Proyectos</span>
+                </div>
+                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full">
+                  <FiAward className="text-purple-400" />
+                  <span>Open Source Contributor</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Habilidades */}
+      <section id="skills" className="py-20 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl font-bold mb-12 text-center">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                Mis Habilidades
+              </span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-300 mb-6">
+                  Tecnologías Principales
+                </h3>
+                <div className="space-y-6">
+                  {technologies.map((tech, index) => (
+                    <div key={index}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {tech.icon}
+                          <span className="text-gray-300">{tech.name}</span>
+                        </div>
+                        <span className="text-gray-400">{tech.level}%</span>
+                      </div>
+                      <Progress
+                        value={tech.level}
+                        className="h-2 bg-gray-800"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-gray-300 mb-6">
+                  Otras Tecnologías
+                </h3>
+                <div className="flex flex-wrap gap-4">
+                  {[
+                    "Bootstrap",
+                    "Tailwind CSS",
+                    "Next.js",
+                    "GraphQL",
+                    "PostgreSQL",
+                    "Docker",
+                    "Git",
+                    "Jest",
+                    "Redux",
+                    "AWS",
+                    "Firebase",
+                    "REST APIs",
+                  ].map((tech, index) => (
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="bg-gray-800/50 hover:bg-gray-700/50"
+                    >
+                      {tech}
+                    </Badge>
+                  ))}
+                </div>
+
+                <h3 className="text-xl font-semibold text-gray-300 mt-8 mb-4">
+                  Idiomas
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-300">Español</span>
+                      <span className="text-gray-400">Nativo</span>
+                    </div>
+                    <Progress value={100} className="h-2 bg-gray-800" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-300">Inglés</span>
+                      <span className="text-gray-400">Avanzado (B2)</span>
+                    </div>
+                    <Progress value={80} className="h-2 bg-gray-800" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Proyectos */}
+      <section id="projects" className="py-20 px-4 bg-gray-900/50">
+        <div className="container mx-auto max-w-6xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl font-bold mb-12 text-center">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                Mis Proyectos
+              </span>
+            </h2>
+
+            <Tabs defaultValue="recent" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 max-w-xs mx-auto bg-gray-800">
+                <TabsTrigger
+                  value="featured"
+                  className="data-[state=active]:bg-purple-900/50"
+                >
+                  Destacados
+                </TabsTrigger>
+                <TabsTrigger
+                  value="recent"
+                  className="data-[state=active]:bg-purple-900/50"
+                >
+                  Recientes
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="featured">
+                {loading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <Card
+                        key={i}
+                        className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 h-64 animate-pulse rounded-xl"
+                      ></Card>
+                    ))}
+                  </div>
+                ) : (
+                  <motion.div
+                    variants={container}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true }}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    {featuredRepos.map((repo) => (
+                      <motion.div key={repo.id} variants={item}>
+                        <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 hover:border-purple-500/70 transition-colors h-full flex flex-col rounded-xl shadow-lg">
+                          <CardHeader>
+                            <div className="flex justify-between items-start">
+                              <CardTitle className="text-xl text-white font-bold">
+                                {repo.name}
+                              </CardTitle>
+                              <Badge
+                                variant="outline"
+                                className="text-xs border border-purple-700 text-purple-300 bg-gray-800/70"
+                              >
+                                {repo.language || "Multi"}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-gray-300 line-clamp-2">
+                              {repo.description || "Sin descripción disponible"}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="flex-grow">
+                            <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+                              <span>
+                                Creado:{" "}
+                                {new Date(repo.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {repo.stargazers_count > 0 && (
+                              <div className="flex items-center gap-1 text-yellow-400">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                                <span>{repo.stargazers_count}</span>
+                              </div>
+                            )}
+                          </CardContent>
+                          <CardFooter>
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="w-full border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg font-semibold"
+                            >
+                              <Link href={repo.html_url} target="_blank">
+                                <FiGithub className="mr-2" /> Ver en GitHub
+                              </Link>
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="recent">
+                {loading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <Card
+                        key={i}
+                        className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 h-64 animate-pulse rounded-xl"
+                      ></Card>
+                    ))}
+                  </div>
+                ) : (
+                  <motion.div
+                    variants={container}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true }}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    {recentRepos.map((repo) => (
+                      <motion.div key={repo.id} variants={item}>
+                        <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-purple-700/30 hover:border-purple-500/70 transition-colors h-full flex flex-col rounded-xl shadow-lg">
+                          <CardHeader>
+                            <div className="flex justify-between items-start">
+                              <CardTitle className="text-xl text-white font-bold">
+                                {repo.name}
+                              </CardTitle>
+                              <Badge
+                                variant="outline"
+                                className="text-xs border border-purple-700 text-purple-300 bg-gray-800/70"
+                              >
+                                {repo.language || "Multi"}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-gray-300 line-clamp-2">
+                              {repo.description || "Sin descripción disponible"}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="flex-grow">
+                            <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+                              <span>
+                                Creado:{" "}
+                                {new Date(repo.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </CardContent>
+                          <CardFooter>
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="w-full border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg font-semibold"
+                            >
+                              <Link href={repo.html_url} target="_blank">
+                                <FiGithub className="mr-2" /> Ver en GitHub
+                              </Link>
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Experiencia */}
+      <section id="experience" className="py-20 px-4 bg-gray-900/50">
+        <div className="container mx-auto max-w-6xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="mb-16 text-center"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                Trayectoria Profesional
+              </span>
+            </h2>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Mi camino en el desarrollo de software, desde los primeros pasos
+              hasta los proyectos más complejos.
+            </p>
+          </motion.div>
+
+          <div className="relative">
+            {/* Línea de tiempo vertical */}
+            <div className="absolute left-1/2 hidden md:block h-full w-1 bg-gradient-to-b from-purple-500 via-pink-500 to-transparent transform -translate-x-1/2 rounded-full"></div>
+
+            <div className="space-y-12 md:space-y-0">
+              {experiences.map((exp, index) => (
+                <motion.div
+                  key={exp.id}
+                  initial={{ opacity: 0, x: -50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className="relative flex flex-col md:flex-row items-center md:items-start gap-8"
+                >
+                  {/* Contenido para móvil */}
+                  <div className="md:hidden w-full bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl shadow-lg p-6 border border-purple-700/30">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg border-2 border-purple-400">
+                        {exp.icon}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white">
+                          {exp.title}
+                        </h3>
+                        <p className="text-sm text-purple-400">
+                          {exp.company} • {exp.year}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-gray-300 mb-4">{exp.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {exp.tags.map((tag, i) => (
+                        <span
+                          key={i}
+                          className="px-3 py-1 text-xs rounded-full bg-gray-800/70 text-purple-300 border border-purple-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Desktop: Cuadro a la izquierda, icono en el centro, año a la derecha */}
+                  <div className="hidden md:flex md:w-1/2 flex-col items-end pr-12 text-right">
+                    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl border border-purple-700/30 p-6 shadow-lg w-full max-w-lg">
+                      <h3 className="text-2xl font-bold text-white">
+                        {exp.title}
+                      </h3>
+                      <p className="text-lg text-purple-400 mb-2">
+                        {exp.company}
+                      </p>
+                      <p className="text-gray-300 mb-4">{exp.description}</p>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {exp.tags.map((tag, i) => (
+                          <span
+                            key={i}
+                            className="px-3 py-1 text-xs rounded-full bg-gray-800/70 text-purple-300 border border-purple-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden md:flex w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 border-4 border-purple-400 items-center justify-center shadow-xl z-10">
+                    {exp.icon}
+                  </div>
+
+                  <div className="hidden md:flex md:w-1/2 pl-12 items-center">
+                    <div className="text-left">
+                      <p className="text-xl font-semibold text-purple-300">
+                        {exp.year}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
               ))}
             </div>
           </div>
+
+          {/* Llamado a la acción */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            viewport={{ once: true }}
+            className="mt-20 text-center"
+          >
+            <h3 className="text-2xl font-bold text-white mb-4">
+              ¿Listo para trabajar juntos?
+            </h3>
+            <p className="text-gray-400 mb-6 max-w-2xl mx-auto">
+              Tengo experiencia creando soluciones digitales a medida.
+              Contáctame para discutir tu proyecto.
+            </p>
+            <Button
+              asChild
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-full font-medium shadow-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300"
+              size="lg"
+            >
+              <a href="#contact">Contactar Ahora</a>
+            </Button>
+          </motion.div>
         </div>
       </section>
-    </main>
+
+      {/* Contacto */}
+      <section id="contact" className="py-20 px-4 bg-gray-900/50">
+        <div className="container mx-auto max-w-4xl text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl font-bold mb-6">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                Contacto
+              </span>
+            </h2>
+
+            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+              ¿Interesado en trabajar juntos o tienes alguna pregunta? No dudes
+              en contactarme.
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-6 mb-12">
+              <Button
+                asChild
+                variant="outline"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
+              >
+                <Link href="mailto:hiroshi@example.com">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2"
+                  >
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  Enviar Email
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                variant="outline"
+                className="border-gray-500 text-gray-300 hover:bg-gray-700 hover:text-white"
+              >
+                <Link href="https://github.com/Hiroshi025" target="_blank">
+                  <FiGithub className="mr-2" /> GitHub
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                variant="outline"
+                className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+              >
+                <Link href="https://linkedin.com/in/Hiroshi025" target="_blank">
+                  <FiLinkedin className="mr-2" /> LinkedIn
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                variant="outline"
+                className="border-sky-500 text-sky-400 hover:bg-sky-500 hover:text-white"
+              >
+                <Link href="https://twitter.com/Hiroshi025" target="_blank">
+                  <FiTwitter className="mr-2" /> Twitter
+                </Link>
+              </Button>
+            </div>
+
+            <div className="text-gray-500 text-sm">
+              <p>
+                © {new Date().getFullYear()} Hiroshi025. Todos los derechos
+                reservados.
+              </p>
+              <p className="mt-2">
+                Diseñado y desarrollado con ❤️ por mí mismo
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    </div>
   );
-}
+};
+
+export default PortfolioPage;

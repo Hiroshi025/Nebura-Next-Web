@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ChevronDown,
-  ExternalLink,
-  FileText,
-  Github,
-  MessageSquare,
-} from "lucide-react";
+import { ChevronDown, ExternalLink, FileText, Github, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,29 +35,29 @@ export default function LandingPage() {
     {
       title: "Bot Client",
       description: "Múltiples clientes para diferentes plataformas",
-      image: "/placeholder.jpg?height=600&width=1200&text=Anime+Chat+Banner+2",
+      image: "/placeholder_1.jpg?height=600&width=1200&text=Anime+Chat+Banner+2",
     },
     {
       title: "Documentación",
       description: "Documentación de la API, Proyecto y Monitor",
-      image: "/placeholder.jpg?height=600&width=1200&text=Anime+Docs+Banner+3",
+      image: "/placeholder_2.jpg?height=600&width=1200&text=Anime+Docs+Banner+3",
     },
     {
       title: "Soporte",
       description: "Asistencia y soporte técnico",
       image:
-        "/placeholder.jpg?height=600&width=1200&text=Anime+Support+Banner+4",
+        "/placeholder_3.jpg?height=600&width=1200&text=Anime+Support+Banner+4",
     },
     {
       title: "Novedades",
       description: "Últimas actualizaciones y noticias",
-      image: "/placeholder.jpg?height=600&width=1200&text=Anime+News+Banner+5",
+      image: "/placeholder_4.jpg?height=600&width=1200&text=Anime+News+Banner+5",
     },
     {
       title: "Feedback",
       description: "Comentarios y sugerencias de los usuarios",
       image:
-        "/placeholder.jpg?height=600&width=1200&text=Anime+Feedback+Banner+6",
+        "/placeholder_5.jpg?height=600&width=1200&text=Anime+Feedback+Banner+6",
     },
   ];
 
@@ -100,10 +94,10 @@ export default function LandingPage() {
               Documentación
             </Link>
             <Link
-              href="#service"
+              href="/anime"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
-              Servicios
+              Anime Web
             </Link>
             <Link
               href="/chat"

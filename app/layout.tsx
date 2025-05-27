@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hiroshi025",
+  title: "Nebura - Hiroshi025",
   description:
     "Soy un desarrollador que crea distintos proyectos y herramientas por pasion y gusto del anime y manga japones, espero seguir compartiendo mi trabajo y aprendiendo de la comunidad.",
   generator: "Next.js",
