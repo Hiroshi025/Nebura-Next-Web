@@ -82,10 +82,10 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center space-x-6">
             <Link
-              href="#features"
+              href="/games"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
-              Características
+              Juegos
             </Link>
             <Link
               href="/docs"

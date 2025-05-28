@@ -267,16 +267,16 @@ const PortfolioPage = () => {
               Manga
             </Link>
             <Link
+              href="/games"
+              className="text-gray-300 hover:text-purple-400 transition-colors"
+            >
+              Juegos
+            </Link>
+            <Link
               href="/docs"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
               Herramientas
-            </Link>
-            <Link
-              href="#projects"
-              className="text-gray-300 hover:text-purple-400 transition-colors"
-            >
-              Proyectos
             </Link>
             <Link
               href="#experience"
@@ -893,7 +893,9 @@ const PortfolioPage = () => {
                 <span className="text-gray-300">Python</span>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-blue-400 text-5xl mb-2 font-bold">C++</span>
+                <span className="text-blue-400 text-5xl mb-2 font-bold">
+                  C++
+                </span>
                 <span className="text-gray-300">C++</span>
               </div>
               <div className="flex flex-col items-center">
@@ -906,7 +908,12 @@ const PortfolioPage = () => {
               </div>
             </div>
             <p className="text-gray-400 text-center max-w-2xl mx-auto">
-              Mi stack favorito combina la potencia de <b>Python</b> y <b>C++</b> para lógica avanzada y automatización, junto con <b>TypeScript</b> y <b>Node.js</b> para construir APIs robustas y escalables. Utilizo <b>Prisma</b> como ORM moderno para bases de datos, logrando así soluciones eficientes, seguras y de alto rendimiento.
+              Mi stack favorito combina la potencia de <b>Python</b> y{" "}
+              <b>C++</b> para lógica avanzada y automatización, junto con{" "}
+              <b>TypeScript</b> y <b>Node.js</b> para construir APIs robustas y
+              escalables. Utilizo <b>Prisma</b> como ORM moderno para bases de
+              datos, logrando así soluciones eficientes, seguras y de alto
+              rendimiento.
             </p>
           </motion.div>
         </div>
