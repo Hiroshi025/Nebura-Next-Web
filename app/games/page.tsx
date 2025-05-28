@@ -9,17 +9,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-  FaBook,
-  FaCalendar,
-  FaChess,
-  FaDungeon,
-  FaFile,
-  FaGamepad,
-  FaGithub,
-  FaSearch,
-  FaSkull,
-  FaStar,
-  FaTwitch,
+	FaBook, FaCalendar, FaChess, FaDungeon, FaFile, FaGamepad, FaGithub, FaSearch, FaSkull, FaStar,
+	FaTwitch
 } from "react-icons/fa";
 import { FiGithub, FiMail, FiTwitter } from "react-icons/fi";
 import { IoMdClose } from "react-icons/io";
@@ -27,13 +18,7 @@ import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog } from "@headlessui/react";
@@ -86,6 +71,42 @@ interface AnimeManga {
   };
   score: number;
   type: string;
+}
+
+// Agrega esta interfaz al inicio con las demás interfaces
+interface DungeonGameState {
+  player: {
+    x: number;
+    y: number;
+    health: number;
+    attack: number;
+    direction: "up" | "down" | "left" | "right";
+    attacking: boolean;
+  };
+  enemies: Array<{
+    id: number;
+    x: number;
+    y: number;
+    health: number;
+    type: "goblin" | "skeleton" | "slime";
+  }>;
+  doors: Array<{
+    id: number;
+    x: number;
+    y: number;
+    locked: boolean;
+  }>;
+  items: Array<{
+    id: number;
+    x: number;
+    y: number;
+    type: "health" | "key" | "treasure";
+  }>;
+  level: number;
+  gameStarted: boolean;
+  gameOver: boolean;
+  victory: boolean;
+  message: string | null;
 }
 
 export default function EntertainmentPage() {
@@ -221,16 +242,22 @@ export default function EntertainmentPage() {
         "https://api.jikan.moe/v4/top/anime?filter=bypopularity"
       );
       const animeData = await animeRes.json();
-      setAnimeRecs(animeData.data.slice(0, 20));
+      setAnimeRecs(
+        Array.isArray(animeData.data) ? animeData.data.slice(0, 20) : []
+      );
 
       // Manga recomendados
       const mangaRes = await fetch(
         "https://api.jikan.moe/v4/top/manga?filter=bypopularity"
       );
       const mangaData = await mangaRes.json();
-      setMangaRecs(mangaData.data.slice(0, 20));
+      setMangaRecs(
+        Array.isArray(mangaData.data) ? mangaData.data.slice(0, 20) : []
+      );
     } catch (error) {
       console.error("Error fetching recommendations:", error);
+      setAnimeRecs([]);
+      setMangaRecs([]);
     }
     setRecLoading(false);
   };
@@ -532,6 +559,339 @@ export default function EntertainmentPage() {
       </>
     );
   }
+
+  const [dungeonGame, setDungeonGame] = useState<DungeonGameState>({
+    player: {
+      x: 2,
+      y: 2,
+      health: 100,
+      attack: 20,
+      direction: "right",
+      attacking: false,
+    },
+    enemies: [],
+    doors: [],
+    items: [],
+    level: 1,
+    gameStarted: false,
+    gameOver: false,
+    victory: false,
+    message: null,
+  });
+
+  const initializeDungeon = (level: number) => {
+    // Configuración básica del nivel
+    const enemyCount = Math.min(3 + level, 8);
+    const enemies = [];
+    const doors = [];
+    const items = [];
+
+    // Añadir enemigos
+    for (let i = 0; i < enemyCount; i++) {
+      const types: Array<"goblin" | "skeleton" | "slime"> = [
+        "goblin",
+        "skeleton",
+        "slime",
+      ];
+      const type = types[Math.floor(Math.random() * types.length)];
+      enemies.push({
+        id: i + 1,
+        x: Math.floor(Math.random() * 5) + 5,
+        y: Math.floor(Math.random() * 5) + 1,
+        health: 30 + level * 10,
+        type,
+      });
+    }
+
+    // Añadir puertas
+    if (level < 3) {
+      doors.push({
+        id: 1,
+        x: 8,
+        y: 5,
+        locked: level > 1,
+      });
+    }
+
+    // Añadir items
+    items.push({
+      id: 1,
+      x: Math.floor(Math.random() * 5) + 1,
+      y: Math.floor(Math.random() * 3) + 1,
+      type: "health" as "health",
+    });
+
+    if (level > 1) {
+      items.push({
+        id: 2,
+        x: Math.floor(Math.random() * 5) + 1,
+        y: Math.floor(Math.random() * 3) + 1,
+        type: "key" as "key",
+      });
+    }
+
+    setDungeonGame({
+      player: {
+        x: 2,
+        y: 2,
+        health: 100,
+        attack: 20 + level * 5,
+        direction: "right",
+        attacking: false,
+      },
+      enemies,
+      doors,
+      items,
+      level,
+      gameStarted: true,
+      gameOver: false,
+      victory: false,
+      message: `Nivel ${level} - Encuentra la salida!`,
+    });
+
+    // Limpiar mensaje después de 3 segundos
+    setTimeout(() => {
+      setDungeonGame((prev) => ({ ...prev, message: null }));
+    }, 3000);
+  };
+
+  const movePlayer = (dx: number, dy: number) => {
+    if (dungeonGame.gameOver || !dungeonGame.gameStarted) return;
+
+    const newX = dungeonGame.player.x + dx;
+    const newY = dungeonGame.player.y + dy;
+
+    // Verificar límites del mapa
+    if (newX < 0 || newX > 9 || newY < 0 || newY > 5) return;
+
+    // Verificar colisión con enemigos
+    const enemyCollision = dungeonGame.enemies.find(
+      (e) => e.x === newX && e.y === newY
+    );
+    if (enemyCollision) {
+      setDungeonGame((prev) => ({
+        ...prev,
+        message: `¡Enemigo encontrado! Presiona ESPACIO para atacar.`,
+      }));
+      return;
+    }
+
+    // Verificar colisión con puertas
+    const doorCollision = dungeonGame.doors.find(
+      (d) => d.x === newX && d.y === newY
+    );
+    if (doorCollision) {
+      if (doorCollision.locked) {
+        const hasKey = dungeonGame.items.some(
+          (i) => i.type === "key" && i.x === -1
+        );
+        if (hasKey) {
+          // Abrir puerta con llave
+          setDungeonGame((prev) => {
+            const updatedDoors = prev.doors.map((d) =>
+              d.id === doorCollision.id ? { ...d, locked: false } : d
+            );
+            return {
+              ...prev,
+              doors: updatedDoors,
+              message: `¡Has abierto la puerta con la llave!`,
+            };
+          });
+          // Limpiar mensaje después de 2 segundos
+          setTimeout(() => {
+            setDungeonGame((prev) => ({ ...prev, message: null }));
+          }, 2000);
+        } else {
+          setDungeonGame((prev) => ({
+            ...prev,
+            message: `¡La puerta está cerrada! Encuentra una llave.`,
+          }));
+          return;
+        }
+      } else {
+        // Pasar al siguiente nivel
+        setDungeonGame((prev) => ({
+          ...prev,
+          victory: true,
+          message: `¡Has completado el nivel ${prev.level}!`,
+        }));
+        // Avanzar al siguiente nivel después de 2 segundos
+        setTimeout(() => {
+          initializeDungeon(dungeonGame.level + 1);
+        }, 2000);
+        return;
+      }
+    }
+
+    // Verificar colisión con items
+    const itemCollision = dungeonGame.items.find(
+      (i) => i.x === newX && i.y === newY
+    );
+    if (itemCollision) {
+      setDungeonGame((prev) => {
+        const updatedItems = prev.items.map((i) =>
+          i.id === itemCollision.id ? { ...i, x: -1, y: -1 } : i
+        );
+        let message = "";
+        let updatedPlayer = { ...prev.player };
+        if (itemCollision.type === "health") {
+          updatedPlayer.health = Math.min(100, updatedPlayer.health + 30);
+          message = "¡+30 de salud!";
+        } else if (itemCollision.type === "key") {
+          message = "¡Has obtenido una llave!";
+        } else if (itemCollision.type === "treasure") {
+          message = "¡Tesoro encontrado!";
+        }
+        return {
+          ...prev,
+          player: updatedPlayer,
+          items: updatedItems,
+          message,
+        };
+      });
+      // Limpiar mensaje después de 2 segundos
+      setTimeout(() => {
+        setDungeonGame((prev) => ({ ...prev, message: null }));
+      }, 2000);
+    }
+
+    // Actualizar dirección del jugador
+    let direction = dungeonGame.player.direction;
+    if (dx > 0) direction = "right";
+    if (dx < 0) direction = "left";
+    if (dy > 0) direction = "down";
+    if (dy < 0) direction = "up";
+
+    // Mover jugador
+    setDungeonGame((prev) => ({
+      ...prev,
+      player: {
+        ...prev.player,
+        x: newX,
+        y: newY,
+        direction,
+      },
+    }));
+  };
+
+  const attack = () => {
+    if (
+      dungeonGame.gameOver ||
+      !dungeonGame.gameStarted ||
+      dungeonGame.player.attacking
+    )
+      return;
+
+    // Marcar que el jugador está atacando
+    setDungeonGame((prev) => ({
+      ...prev,
+      player: {
+        ...prev.player,
+        attacking: true,
+      },
+    }));
+
+    // Determinar la posición del ataque basado en la dirección
+    let attackX = dungeonGame.player.x;
+    let attackY = dungeonGame.player.y;
+    switch (dungeonGame.player.direction) {
+      case "up":
+        attackY -= 1;
+        break;
+      case "down":
+        attackY += 1;
+        break;
+      case "left":
+        attackX -= 1;
+        break;
+      case "right":
+        attackX += 1;
+        break;
+    }
+
+    // Buscar enemigo en la posición de ataque
+    const enemyIndex = dungeonGame.enemies.findIndex(
+      (e) => e.x === attackX && e.y === attackY
+    );
+    if (enemyIndex >= 0) {
+      setDungeonGame((prev) => {
+        const updatedEnemies = [...prev.enemies];
+        const enemy = updatedEnemies[enemyIndex];
+        // Aplicar daño
+        enemy.health -= prev.player.attack;
+        let message = `¡Has golpeado al enemigo por ${prev.player.attack} de daño!`;
+        // Verificar si el enemigo murió
+        if (enemy.health <= 0) {
+          updatedEnemies.splice(enemyIndex, 1);
+          message = "¡Has derrotado al enemigo!";
+        }
+        return {
+          ...prev,
+          enemies: updatedEnemies,
+          message,
+        };
+      });
+    } else {
+      setDungeonGame((prev) => ({
+        ...prev,
+        message: "¡No hay enemigos para atacar!",
+      }));
+    }
+
+    // Terminar animación de ataque después de 300ms
+    setTimeout(() => {
+      setDungeonGame((prev) => ({
+        ...prev,
+        player: {
+          ...prev.player,
+          attacking: false,
+        },
+      }));
+    }, 300);
+
+    // Limpiar mensaje después de 2 segundos
+    setTimeout(() => {
+      setDungeonGame((prev) => ({ ...prev, message: null }));
+    }, 2000);
+  };
+
+  // Efecto para manejar controles de teclado
+  useEffect(() => {
+    if (!dungeonGame.gameStarted || dungeonGame.gameOver || dungeonGame.victory)
+      return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "ArrowUp":
+          movePlayer(0, -1);
+          break;
+        case "ArrowDown":
+          movePlayer(0, 1);
+          break;
+        case "ArrowLeft":
+          movePlayer(-1, 0);
+          break;
+        case "ArrowRight":
+          movePlayer(1, 0);
+          break;
+        case " ":
+          attack();
+          break;
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dungeonGame.gameStarted, dungeonGame.gameOver, dungeonGame.victory]);
+
+  // Efecto para verificar si el jugador perdió
+  useEffect(() => {
+    if (dungeonGame.player.health <= 0 && !dungeonGame.gameOver) {
+      setDungeonGame((prev) => ({
+        ...prev,
+        gameOver: true,
+        message: "¡Game Over! Inténtalo de nuevo.",
+      }));
+    }
+  }, [dungeonGame.player.health, dungeonGame.gameOver]);
 
   return (
     <AnimatePresence>
@@ -991,6 +1351,302 @@ export default function EntertainmentPage() {
           </div>
         </section>
 
+        <section
+          id="dungeon-game"
+          className="py-16 bg-gradient-to-br from-gray-900 via-purple-950/80 to-indigo-950"
+        >
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl font-bold mb-8 text-center">
+              Juego de Mazmorra
+            </h2>
+
+            <div className="max-w-2xl mx-auto bg-gray-800/70 rounded-xl shadow-lg p-6 mb-8 border border-purple-900/40">
+              <div className="flex flex-col items-center">
+                {!dungeonGame.gameStarted &&
+                  !dungeonGame.gameOver &&
+                  !dungeonGame.victory && (
+                    <div className="text-center mb-6">
+                      <h3 className="text-xl font-bold mb-4">
+                        ¡Explora la mazmorra!
+                      </h3>
+                      <p className="text-gray-300 mb-6">
+                        Usa las flechas para moverte, ESPACIO para atacar.
+                        Encuentra la salida y derrota a los enemigos para
+                        avanzar al siguiente nivel.
+                      </p>
+                      <Button
+                        onClick={() => initializeDungeon(1)}
+                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                      >
+                        <FaDungeon className="mr-2" /> Comenzar Aventura
+                      </Button>
+                    </div>
+                  )}
+
+                {dungeonGame.gameOver && (
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold mb-4 text-red-400">
+                      ¡Game Over!
+                    </h3>
+                    <p className="text-gray-300 mb-6">
+                      Has llegado al nivel {dungeonGame.level}. Inténtalo de
+                      nuevo.
+                    </p>
+                    <Button
+                      onClick={() => initializeDungeon(1)}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                    >
+                      <FaDungeon className="mr-2" /> Reintentar
+                    </Button>
+                  </div>
+                )}
+
+                {dungeonGame.message && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-purple-900/70 text-purple-100 px-4 py-2 rounded-lg mb-4"
+                  >
+                    {dungeonGame.message}
+                  </motion.div>
+                )}
+
+                {(dungeonGame.gameStarted ||
+                  dungeonGame.gameOver ||
+                  dungeonGame.victory) && (
+                  <div className="w-full">
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex items-center">
+                        <span className="bg-purple-900/50 text-purple-300 px-3 py-1 rounded-lg mr-2">
+                          Nivel: {dungeonGame.level}
+                        </span>
+                        <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">
+                          Salud: {dungeonGame.player.health}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-lg">
+                          Enemigos: {dungeonGame.enemies.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tablero del juego */}
+                    <div
+                      className="relative bg-gray-900 border-2 border-purple-900 rounded-lg overflow-hidden mx-auto"
+                      style={{ width: "400px", height: "240px" }}
+                    >
+                      {/* Grid de la mazmorra */}
+                      <div className="absolute inset-0 grid grid-cols-10 grid-rows-6">
+                        {Array.from({ length: 60 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="border border-gray-800/50"
+                          ></div>
+                        ))}
+                      </div>
+
+                      {/* Renderizar elementos del juego */}
+                      {dungeonGame.items.map(
+                        (item) =>
+                          item.x >= 0 &&
+                          item.y >= 0 && (
+                            <motion.div
+                              key={item.id}
+                              className={`absolute w-8 h-8 flex items-center justify-center`}
+                              style={{
+                                left: `${item.x * 40}px`,
+                                top: `${item.y * 40}px`,
+                              }}
+                              animate={{
+                                y: [0, -5, 0],
+                                opacity: [0.8, 1, 0.8],
+                              }}
+                              transition={{
+                                repeat: Infinity,
+                                duration: 2,
+                                ease: "easeInOut",
+                              }}
+                            >
+                              {item.type === "health" && (
+                                <div className="text-green-400 text-xl">❤️</div>
+                              )}
+                              {item.type === "key" && (
+                                <div className="text-yellow-400 text-xl">
+                                  🔑
+                                </div>
+                              )}
+                              {item.type === "treasure" && (
+                                <div className="text-yellow-300 text-xl">
+                                  💰
+                                </div>
+                              )}
+                            </motion.div>
+                          )
+                      )}
+
+                      {dungeonGame.doors.map((door) => (
+                        <div
+                          key={door.id}
+                          className={`absolute w-8 h-8 flex items-center justify-center ${
+                            door.locked
+                              ? "bg-yellow-900/80"
+                              : "bg-yellow-700/80"
+                          } border-2 ${
+                            door.locked
+                              ? "border-yellow-600"
+                              : "border-yellow-400"
+                          }`}
+                          style={{
+                            left: `${door.x * 40}px`,
+                            top: `${door.y * 40}px`,
+                          }}
+                        >
+                          {door.locked ? "🔒" : "🚪"}
+                        </div>
+                      ))}
+
+                      {dungeonGame.enemies.map((enemy) => (
+                        <motion.div
+                          key={enemy.id}
+                          className="absolute w-8 h-8 flex items-center justify-center"
+                          style={{
+                            left: `${enemy.x * 40}px`,
+                            top: `${enemy.y * 40}px`,
+                          }}
+                          animate={{
+                            scale: [1, 1.15, 1],
+                            y: [0, -6, 0],
+                          }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 1.6 + enemy.id * 0.1,
+                            ease: "easeInOut",
+                          }}
+                        >
+                          {enemy.type === "goblin" && (
+                            <span
+                              className="text-green-400 text-2xl"
+                              title="Goblin"
+                            >
+                              👺
+                            </span>
+                          )}
+                          {enemy.type === "skeleton" && (
+                            <span
+                              className="text-gray-300 text-2xl"
+                              title="Esqueleto"
+                            >
+                              💀
+                            </span>
+                          )}
+                          {enemy.type === "slime" && (
+                            <span
+                              className="text-blue-400 text-2xl"
+                              title="Slime"
+                            >
+                              🟦
+                            </span>
+                          )}
+                        </motion.div>
+                      ))}
+
+                      {/* Jugador */}
+                      <motion.div
+                        className="absolute w-8 h-8 flex items-center justify-center z-10"
+                        style={{
+                          left: `${dungeonGame.player.x * 40}px`,
+                          top: `${dungeonGame.player.y * 40}px`,
+                        }}
+                        animate={{
+                          scale: dungeonGame.player.attacking ? [1, 1.2, 1] : 1,
+                          rotate:
+                            dungeonGame.player.direction === "left"
+                              ? -10
+                              : dungeonGame.player.direction === "right"
+                              ? 10
+                              : 0,
+                        }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <span
+                          className={`text-purple-300 text-2xl ${
+                            dungeonGame.player.attacking ? "animate-pulse" : ""
+                          }`}
+                          title="Jugador"
+                        >
+                          🧙
+                        </span>
+                      </motion.div>
+                    </div>
+
+                    {/* Controles visuales */}
+                    <div className="flex justify-center mt-6 gap-4">
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs text-gray-400 mb-1">
+                          Mover
+                        </span>
+                        <div className="flex flex-col items-center">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="mb-1"
+                            onClick={() => movePlayer(0, -1)}
+                          >
+                            ↑
+                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => movePlayer(-1, 0)}
+                            >
+                              ←
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => movePlayer(1, 0)}
+                            >
+                              →
+                            </Button>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="mt-1"
+                            onClick={() => movePlayer(0, 1)}
+                          >
+                            ↓
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs text-gray-400 mb-1">
+                          Atacar
+                        </span>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="text-lg border-purple-400 text-purple-300"
+                          onClick={attack}
+                          disabled={dungeonGame.player.attacking}
+                        >
+                          ⚔️
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="text-center text-gray-400 text-xs mt-6">
+              Usa las flechas del teclado o los botones para moverte. ESPACIO o
+              ⚔️ para atacar.
+            </div>
+          </div>
+        </section>
+
         {/* Chess Section */}
         <section
           id="chess"
@@ -1114,47 +1770,86 @@ export default function EntertainmentPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {chessStreamers.slice(0, 9).map((streamer) => (
                     <motion.div
-                      key={streamer.player_id || streamer.username} // Usa player_id o username como key
-                      whileHover={{ scale: 1.03 }}
-                      transition={{ type: "spring", stiffness: 300 }}
+                      key={streamer.player_id || streamer.username}
+                      whileHover="hover"
+                      variants={cardHover}
                     >
-                      <Card className="bg-gray-800/60 border-blue-900/50 hover:border-blue-400 transition-colors">
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className="relative h-12 w-12 rounded-full overflow-hidden">
-                              {streamer.avatar ? (
-                                <Image
-                                  src={streamer.avatar}
-                                  alt={streamer.username}
-                                  fill
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <div className="h-full w-full bg-blue-900/50 flex items-center justify-center">
-                                  <FaChess className="text-xl text-blue-400" />
+                      <Card className="bg-gray-800/60 border-blue-900/50 h-full cursor-pointer hover:border-blue-400 transition-colors">
+                        <CardContent className="p-0">
+                          <div className="relative h-48 w-full">
+                            {streamer.avatar ? (
+                              <Image
+                                src={streamer.avatar}
+                                alt={streamer.username}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
+                              />
+                            ) : (
+                              <div className="h-full w-full bg-blue-900/50 flex items-center justify-center">
+                                <FaChess className="text-4xl text-blue-400" />
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+                              <div className="flex items-center justify-between">
+                                {streamer.title && (
+                                  <span className="bg-yellow-500/80 text-yellow-100 px-2 py-1 rounded text-xs font-bold">
+                                    {streamer.title.toUpperCase()}
+                                  </span>
+                                )}
+                                <div className="flex items-center bg-black/70 px-2 py-1 rounded">
+                                  <FaTwitch className="text-purple-400 mr-1" />
+                                  <span className="text-sm font-medium">
+                                    {typeof streamer.followers === "number"
+                                      ? streamer.followers.toLocaleString()
+                                      : "N/A"}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                            <div>
-                              <CardTitle>{streamer.username}</CardTitle>
-                              <CardDescription>
-                                {streamer.followers} seguidores
-                              </CardDescription>
+                              </div>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent>
-                          {streamer.twitch_url && (
-                            <Button
-                              asChild
-                              variant="outline"
-                              className="w-full border-purple-400 text-purple-400 hover:bg-purple-900/50"
+                          <div className="p-4">
+                            <h3
+                              className="font-bold line-clamp-1"
+                              title={streamer.username}
                             >
-                              <Link href={streamer.twitch_url} target="_blank">
-                                <FaTwitch className="mr-2" /> Ver en Twitch
-                              </Link>
-                            </Button>
-                          )}
+                              {streamer.username}
+                            </h3>
+                            <div className="mt-4 flex justify-center">
+                              <Button
+                                asChild
+                                variant="outline"
+                                className={
+                                  "w-11/12 max-w-xs flex items-center justify-center gap-2 font-semibold text-base shadow-md transition-all duration-200 " +
+                                  (streamer.twitch_url
+                                    ? "border-purple-400 text-purple-400 hover:bg-purple-900/40"
+                                    : "border-blue-400 text-blue-400 hover:bg-blue-900/40")
+                                }
+                                style={{
+                                  letterSpacing: "0.5px",
+                                  borderRadius: "0.75rem",
+                                }}
+                              >
+                                <Link
+                                  href={streamer.twitch_url || streamer.url}
+                                  target="_blank"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {streamer.twitch_url ? (
+                                    <>
+                                      <FaTwitch className="mr-2 text-lg" /> Ver
+                                      en Twitch
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FaChess className="mr-2 text-lg" /> Ver
+                                      perfil
+                                    </>
+                                  )}
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -1318,7 +2013,7 @@ export default function EntertainmentPage() {
         </section>
 
         {/* Animaciones Temáticas */}
-        <section className="py-16 bg-gradient-to-br from-indigo-900 via-blue-950/80 to-gray-900">
+        <section className= "py-16 bg-gradient-to-br from-blue-950 via-indigo-950/80 to-gray-900">
           <div className="container mx-auto px-4">
             <h2 className="text-3xl font-bold mb-8 text-center">
               Animaciones Temáticas
@@ -1412,6 +2107,142 @@ export default function EntertainmentPage() {
                   dinámicas.
                 </p>
               </motion.div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="recursos"
+          className="py-16 bg-gradient-to-br from-blue-950 via-indigo-950/80 to-gray-900"
+        >
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl font-bold mb-8 text-center">
+              Recursos y Tutoriales Recomendados
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Tutoriales de Ajedrez */}
+              <div className="bg-gray-800/70 rounded-xl p-6 shadow-lg border border-blue-900/40 flex flex-col">
+                <div className="flex items-center mb-4">
+                  <FaChess className="text-3xl text-blue-400 mr-3" />
+                  <h3 className="text-xl font-bold">Ajedrez</h3>
+                </div>
+                <ul className="space-y-3 flex-1">
+                  <li>
+                    <a
+                      href="https://www.chess.com/lessons"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> Lecciones interactivas en
+                      Chess.com
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://lichess.org/learn"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> Tutoriales y ejercicios en
+                      Lichess
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://www.youtube.com/@Elrincondelajedrez"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> Canal de YouTube: El Rincón
+                      del Ajedrez
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              {/* Tutoriales de Programación */}
+              <div className="bg-gray-800/70 rounded-xl p-6 shadow-lg border border-indigo-900/40 flex flex-col">
+                <div className="flex items-center mb-4">
+                  <FaGithub className="text-3xl text-indigo-400 mr-3" />
+                  <h3 className="text-xl font-bold">Programación</h3>
+                </div>
+                <ul className="space-y-3 flex-1">
+                  <li>
+                    <a
+                      href="https://www.freecodecamp.org/espanol/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> FreeCodeCamp en Español
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://www.youtube.com/@midulive"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> YouTube: midudev (JavaScript y
+                      más)
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://roadmap.sh/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> Roadmaps para desarrolladores
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              {/* Anime/Manga */}
+              <div className="bg-gray-800/70 rounded-xl p-6 shadow-lg border border-purple-900/40 flex flex-col">
+                <div className="flex items-center mb-4">
+                  <FaBook className="text-3xl text-purple-400 mr-3" />
+                  <h3 className="text-xl font-bold">Anime & Manga</h3>
+                </div>
+                <ul className="space-y-3 flex-1">
+                  <li>
+                    <a
+                      href="https://myanimelist.net/anime/season"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> Guía de temporadas en
+                      MyAnimeList
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://www.anime-planet.com/anime/watch-online/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> Dónde ver anime legalmente
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://www.youtube.com/@RaziVideos"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-300 hover:underline flex items-center"
+                    >
+                      <FaBook className="mr-2" /> YouTube: Razi (guías y cultura
+                      anime)
+                    </a>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </section>
