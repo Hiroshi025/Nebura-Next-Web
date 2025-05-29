@@ -1,38 +1,25 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import yaml from "js-yaml"; // npm install js-yaml
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  FaCodeBranch,
-  FaDiscord,
-  FaGithub,
-  FaGoogle,
-  FaHistory,
-  FaKey,
-  FaLink,
-  FaRandom,
-  FaSearch,
-  FaServer,
-  FaShieldAlt,
-  FaWhatsapp,
+	FaCodeBranch, FaDiscord, FaExpand, FaGithub, FaGoogle, FaHistory, FaKey, FaLink, FaRandom,
+	FaSearch, FaSearchMinus, FaSearchPlus, FaServer, FaShieldAlt, FaWhatsapp
 } from "react-icons/fa";
 import { FiCheck, FiCopy } from "react-icons/fi";
 
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+	Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+	DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+
+import { QrGenerator } from "./QrGenerator";
+import { WebhookTester } from "./WebhookTester";
 
 // Define the Feature type for documentation features
 type Feature = {
@@ -228,6 +215,25 @@ const securityVersions = [
   },
 ];
 
+// NUEVO: Control de versiones para la documentación
+const documentationVersions = [
+  {
+    version: "1.0.0",
+    date: "15/10/2025",
+    deprecated: false,
+    label: "Estable",
+    color: "green",
+    // Aquí puedes agregar más campos si necesitas más versiones en el futuro
+  },
+  {
+    version: "0.9.5",
+    date: "01/10/2025",
+    deprecated: true,
+    label: "Deprecada",
+    color: "yellow",
+  },
+];
+
 // Componente contador animado para uptime y memoria
 const AnimatedNumber = ({
   value,
@@ -409,9 +415,91 @@ function fuzzyMatch(text: string, query: string) {
 }
 
 // NUEVO: Buscador avanzado con filtros y sugerencias
-const DocSearch = ({ features }: { features: FeatureAdv[] }) => {
+// Define documentationSections type and value before using it
+type DocumentationSection = {
+  id: string;
+  title: string;
+  content: string[];
+};
+
+const documentationSections: DocumentationSection[] = [
+  {
+    id: "overview",
+    title: "Visión General",
+    content: [
+      "Nebura Works es una plataforma API modular diseñada para integrar múltiples servicios con arquitectura escalable y seguridad avanzada.",
+      "Componentes independientes que se integran fácilmente.",
+      "WebSockets y eventos para interacciones instantáneas.",
+      "JWT, rate limiting, CORS y protección contra ataques.",
+      "Métricas, logs y alertas en tiempo real.",
+    ],
+  },
+  {
+    id: "architecture",
+    title: "Arquitectura",
+    content: [
+      "La arquitectura sigue un patrón modular con un orquestador central que gestiona los diferentes servicios y sus interacciones.",
+      "Orquestador Principal: Gestiona el ciclo de vida de todos los módulos y servicios.",
+      "Módulos: Componentes independientes que pueden activarse/desactivarse.",
+      "Recursos Compartidos: Funcionalidades comunes reutilizables entre módulos.",
+    ],
+  },
+  {
+    id: "modules",
+    title: "Módulos",
+    content: [
+      "API Server: Servidor HTTP/WebSocket con Express y Socket.IO para APIs REST y comunicación en tiempo real.",
+      "Discord Bot: Bot de Discord con carga dinámica de comandos y eventos.",
+      "WhatsApp Client: Cliente WhatsApp con registro de mensajes y comandos.",
+    ],
+  },
+  {
+    id: "configuration",
+    title: "Configuración",
+    content: [
+      "Configuración flexible mediante archivos YAML/JSON.",
+      "Soporte para variables de entorno y perfiles de despliegue.",
+    ],
+  },
+  {
+    id: "examples",
+    title: "Ejemplos",
+    content: [
+      "Ejemplo de uso de API Server.",
+      "Ejemplo de integración con Discord Bot.",
+      "Ejemplo de autenticación JWT.",
+    ],
+  },
+  {
+    id: "development",
+    title: "Desarrollo",
+    content: [
+      "Guía para contribuir al proyecto.",
+      "Buenas prácticas de desarrollo y pruebas.",
+      "Integración continua y despliegue.",
+    ],
+  },
+  {
+    id: "support",
+    title: "Soporte",
+    content: [
+      "Enlaces a Discord, GitHub Issues y documentación oficial.",
+      "Canales de soporte técnico y comunidad.",
+    ],
+  },
+];
+
+const DocSearch = ({
+  features,
+  documentationSections,
+}: {
+  features: FeatureAdv[];
+  documentationSections: DocumentationSection[];
+}) => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState(features);
+  const [results, setResults] = useState<
+    { type: "feature" | "doc"; item: any }[]
+  >([]);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [stackFilter, setStackFilter] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -421,13 +509,11 @@ const DocSearch = ({ features }: { features: FeatureAdv[] }) => {
   const allTypes = Array.from(new Set(features.map((f) => f.type)));
 
   useEffect(() => {
-    let filtered = features.filter((f) => {
-      // Filtro por tipo
+    // Filtra features
+    let filteredFeatures = features.filter((f) => {
       if (typeFilter && f.type !== typeFilter) return false;
-      // Filtro por stack
       if (stackFilter && !(f.stack as string[]).includes(stackFilter))
         return false;
-      // Búsqueda avanzada
       const inTitle = fuzzyMatch(f.title, query);
       const inDesc =
         typeof f.description === "string"
@@ -436,28 +522,53 @@ const DocSearch = ({ features }: { features: FeatureAdv[] }) => {
       const inStack = (f.stack as string[]).some((s) => fuzzyMatch(s, query));
       return inTitle || inDesc || inStack;
     });
-    setResults(filtered);
 
-    // Sugerencias de autocompletado
+    // Filtra secciones de documentación
+    let filteredDocs: typeof results = [];
+    if (query) {
+      filteredDocs = documentationSections
+        .filter(
+          (section) =>
+            fuzzyMatch(section.title, query) ||
+            section.content.some((c) => fuzzyMatch(c, query))
+        )
+        .map((section) => ({ type: "doc", item: section }));
+    }
+
+    // Junta ambos resultados
+    const featureResults = filteredFeatures.map((f) => ({
+      type: "feature" as const,
+      item: f,
+    }));
+    // Ensure all .type are "feature" or "doc"
+    const mergedResults: { type: "feature" | "doc"; item: any }[] = [
+      ...featureResults,
+      ...filteredDocs.map((doc) => ({ type: "doc" as const, item: doc.item })),
+    ];
+    setResults(mergedResults);
+
+    // Sugerencias de autocompletado (features + docs)
     if (query.length > 1) {
-      const sug = features
+      const featureTitles = features
         .map((f) => f.title)
-        .filter((t) => t.toLowerCase().startsWith(query.toLowerCase()))
-        .slice(0, 3);
-      setSuggestions(sug);
+        .filter((t) => t.toLowerCase().startsWith(query.toLowerCase()));
+      const docTitles = documentationSections
+        .map((s) => s.title)
+        .filter((t) => t.toLowerCase().startsWith(query.toLowerCase()));
+      setSuggestions([...featureTitles, ...docTitles].slice(0, 3));
     } else {
       setSuggestions([]);
     }
     // eslint-disable-next-line
-  }, [query, typeFilter, stackFilter, features]);
+  }, [query, typeFilter, stackFilter, features, documentationSections]);
 
   return (
-    <div className="mb-10">
-      <div className="relative w-full md:w-2/3 mx-auto">
+    <div className="mb-10 max-w-2xl mx-auto">
+      <div className="relative w-full mx-auto">
         <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400 text-lg pointer-events-none" />
         <input
           type="text"
-          placeholder="Buscar módulo, stack, tipo..."
+          placeholder="Buscar módulo, sección, stack, tipo..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-800 border border-purple-700/40 text-gray-200 focus:outline-none focus:border-purple-500 transition-all shadow-md placeholder-gray-400"
@@ -520,46 +631,82 @@ const DocSearch = ({ features }: { features: FeatureAdv[] }) => {
         )}
       </div>
       {/* Resultados */}
-      {(query || typeFilter || stackFilter) && (
+      {query && (
         <div className="mt-6">
           <h4 className="text-gray-400 mb-3 font-semibold text-lg flex items-center gap-2">
             <FaSearch className="text-purple-400" /> Resultados:
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {results.length > 0 ? (
-              results.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card className="bg-gray-800/80 border border-purple-900/40 hover:border-purple-500/70 transition-all duration-300 shadow-lg group h-full">
-                    <CardContent className="p-6 h-full flex flex-col">
-                      <div className="flex items-center mb-2 gap-2">
-                        {feature.icon}
-                        <span className="font-bold text-white text-lg">
-                          {feature.title}
-                        </span>
-                        <span className="ml-auto px-2 py-1 rounded-full text-xs bg-gray-900 border border-gray-700 text-gray-400 font-mono">
-                          {feature.type}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {(feature.stack as string[]).map((s, i) => (
-                          <span
-                            key={i}
-                            className="px-2 py-0.5 rounded bg-purple-900/30 text-purple-300 text-xs font-mono"
-                          >
-                            {s}
+              results.map((result, index) =>
+                result.type === "feature" ? (
+                  <motion.div
+                    key={`feature-${index}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card className="bg-gray-800/80 border border-purple-900/40 hover:border-purple-500/70 transition-all duration-300 shadow-lg group h-full">
+                      <CardContent className="p-6 h-full flex flex-col">
+                        <div className="flex items-center mb-2 gap-2">
+                          {result.item.icon}
+                          <span className="font-bold text-white text-lg">
+                            {result.item.title}
                           </span>
-                        ))}
-                      </div>
-                      <div className="text-gray-400">{feature.description}</div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))
+                          <span className="ml-auto px-2 py-1 rounded-full text-xs bg-gray-900 border border-gray-700 text-gray-400 font-mono">
+                            {result.item.type}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {(result.item.stack as string[]).map(
+                            (s: string, i: number) => (
+                              <span
+                                key={i}
+                                className="px-2 py-0.5 rounded bg-purple-900/30 text-purple-300 text-xs font-mono"
+                              >
+                                {s}
+                              </span>
+                            )
+                          )}
+                        </div>
+                        <div className="text-gray-400">
+                          {result.item.description}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`doc-${index}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card className="bg-gray-900/80 border border-blue-900/40 hover:border-blue-500/70 transition-all duration-300 shadow-lg group h-full">
+                      <CardContent className="p-6 h-full flex flex-col">
+                        <div className="flex items-center mb-2 gap-2">
+                          <FaLink className="text-blue-400 text-2xl" />
+                          <span className="font-bold text-white text-lg">
+                            {result.item.title}
+                          </span>
+                          <span className="ml-auto px-2 py-1 rounded-full text-xs bg-gray-900 border border-gray-700 text-blue-400 font-mono">
+                            Documentación
+                          </span>
+                        </div>
+                        <div className="text-gray-400">
+                          {result.item.content.slice(0, 3).join(" · ")}
+                        </div>
+                        <a
+                          href={`#${result.item.id}`}
+                          className="mt-4 px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 transition self-end text-xs"
+                        >
+                          Ir a sección
+                        </a>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )
+              )
             ) : (
               <div className="text-red-400 col-span-full text-center py-8 bg-gray-800/60 rounded-xl border border-red-400/30">
                 No se encontraron resultados.
@@ -599,7 +746,7 @@ const UnixDateConverter = () => {
   };
 
   return (
-    <div className="bg-gray-800/60 rounded-xl p-6 mb-10 shadow-lg border border-purple-700/20 max-w-xl mx-auto">
+    <div className="bg-gray-800/60 rounded-xl p-6 mb-10 shadow-lg border border-purple-700/20 max-w-2xl mx-auto">
       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
         <FaHistory className="text-purple-400" /> Conversor de Fechas Unix
       </h3>
@@ -631,9 +778,1124 @@ const UnixDateConverter = () => {
   );
 };
 
+// Extiende el tipo Window para incluir 'mermaid'
+declare global {
+  interface Window {
+    mermaid?: {
+      initialize: (config: any) => void;
+      run: () => void;
+    };
+  }
+}
+
+const FullDocumentation = ({
+  version,
+  versionLabel,
+  versionColor,
+}: {
+  version: string;
+  versionLabel: string;
+  versionColor: string;
+}) => {
+  const mermaidContainerRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(1);
+
+  // Funciones de zoom y reset
+  const handleZoom = (factor: number) => {
+    if (!mermaidContainerRef.current) return;
+    zoomRef.current = Math.max(0.5, Math.min(zoomRef.current * factor, 3));
+    mermaidContainerRef.current.style.transform = `scale(${zoomRef.current})`;
+    mermaidContainerRef.current.style.transformOrigin = "0 0";
+  };
+  const handleReset = () => {
+    if (!mermaidContainerRef.current) return;
+    zoomRef.current = 1;
+    mermaidContainerRef.current.style.transform = `scale(1)`;
+  };
+
+  // Mermaid code extraído del prompt
+  const mermaidCode = `
+graph TD
+
+    28044["User<br>External Actor"]
+    28045["Main Orchestrator<br>Node.js"]
+    28046["WhatsApp Client<br>whatsapp-web.js"]
+    subgraph 28005["External Services & Actors"]
+        28020["End User<br>External Actor"]
+        28021["Discord Platform<br>Discord API"]
+        28022["WhatsApp Platform<br>WhatsApp API"]
+        28023["AI APIs<br>Google Gemini, etc."]
+        28024["Developer &amp; Ops APIs<br>GitHub, PM2, etc."]
+        28025["Application Database<br>SQL/SQLite"]
+    end
+    subgraph 28006["Nebura Client Application"]
+        28007["Shared Infrastructure"]
+        28008["WhatsApp Integration"]
+        28009["Discord Bot"]
+        28010["API Server"]
+        28011["Main Orchestrator<br>Node.js"]
+        %% Edges at this level (grouped by source)
+        28008["WhatsApp Integration"] -->|uses| 28007["Shared Infrastructure"]
+        28009["Discord Bot"] -->|uses| 28007["Shared Infrastructure"]
+        28010["API Server"] -->|uses| 28007["Shared Infrastructure"]
+        28011["Main Orchestrator<br>Node.js"] -->|initializes| 28010["API Server"]
+        28011["Main Orchestrator<br>Node.js"] -->|initializes| 28009["Discord Bot"]
+        28011["Main Orchestrator<br>Node.js"] -->|initializes| 28008["WhatsApp Integration"]
+        28011["Main Orchestrator<br>Node.js"] -->|uses| 28007["Shared Infrastructure"]
+    end
+    subgraph 28026["External Systems"]
+        28039["Chat Platforms<br>Discord, WhatsApp APIs"]
+        28040["AI APIs<br>Google Gemini, etc."]
+        28041["Version Control APIs<br>GitHub API, etc."]
+        28042["Databases<br>Prisma, SQLite"]
+        28043["Process Management<br>PM2"]
+    end
+    subgraph 28027["Shared Libraries"]
+        28036["Shared Utilities &amp; Classes<br>TypeScript"]
+        28037["Data Management &amp; Structure<br>TypeScript/Prisma"]
+        28038["App Configuration<br>YAML/JSON"]
+        %% Edges at this level (grouped by source)
+        28036["Shared Utilities &amp; Classes<br>TypeScript"] -->|reads| 28038["App Configuration<br>YAML/JSON"]
+    end
+    subgraph 28028["Nebura Discord Bot<br>Discord.js"]
+        28033["Discord Client Entry<br>TypeScript"]
+        28034["Core Event &amp; Command Handlers<br>TypeScript"]
+        28035["Bot Features &amp; Addons<br>TypeScript"]
+        %% Edges at this level (grouped by source)
+        28033["Discord Client Entry<br>TypeScript"] -->|loads| 28034["Core Event &amp; Command Handlers<br>TypeScript"]
+        28034["Core Event &amp; Command Handlers<br>TypeScript"] -->|route to| 28035["Bot Features &amp; Addons<br>TypeScript"]
+    end
+    subgraph 28029["Nebura API Server<br>Node.js/Express"]
+        28030["API Server Entry<br>TypeScript"]
+        28031["HTTP Routes<br>TypeScript"]
+        28032["Domain Services<br>TypeScript"]
+        %% Edges at this level (grouped by source)
+        28030["API Server Entry<br>TypeScript"] -->|sets up| 28031["HTTP Routes<br>TypeScript"]
+        28031["HTTP Routes<br>TypeScript"] -->|invoke| 28032["Domain Services<br>TypeScript"]
+    end
+    %% Edges at this level (grouped by source)
+    28044["User<br>External Actor"] -->|interacts via API| 28029["Nebura API Server<br>Node.js/Express"]
+    28044["User<br>External Actor"] -->|interacts via Discord| 28028["Nebura Discord Bot<br>Discord.js"]
+    28044["User<br>External Actor"] -->|interacts via WhatsApp| 28046["WhatsApp Client<br>whatsapp-web.js"]
+    28045["Main Orchestrator<br>Node.js"] -->|initializes| 28029["Nebura API Server<br>Node.js/Express"]
+    28045["Main Orchestrator<br>Node.js"] -->|initializes| 28028["Nebura Discord Bot<br>Discord.js"]
+    28045["Main Orchestrator<br>Node.js"] -->|initializes| 28046["WhatsApp Client<br>whatsapp-web.js"]
+    28045["Main Orchestrator<br>Node.js"] -->|uses| 28036["Shared Utilities &amp; Classes<br>TypeScript"]
+    28045["Main Orchestrator<br>Node.js"] -->|uses for backups| 28037["Data Management &amp; Structure<br>TypeScript/Prisma"]
+    28033["Discord Client Entry<br>TypeScript"] -->|uses| 28036["Shared Utilities &amp; Classes<br>TypeScript"]
+    28035["Bot Features &amp; Addons<br>TypeScript"] -->|interact with| 28039["Chat Platforms<br>Discord, WhatsApp APIs"]
+    28035["Bot Features &amp; Addons<br>TypeScript"] -->|use| 28036["Shared Utilities &amp; Classes<br>TypeScript"]
+    28035["Bot Features &amp; Addons<br>TypeScript"] -->|access data via| 28037["Data Management &amp; Structure<br>TypeScript/Prisma"]
+    28035["Bot Features &amp; Addons<br>TypeScript"] -->|managed by| 28043["Process Management<br>PM2"]
+    28046["WhatsApp Client<br>whatsapp-web.js"] -->|uses| 28036["Shared Utilities &amp; Classes<br>TypeScript"]
+    28046["WhatsApp Client<br>whatsapp-web.js"] -->|interacts with| 28039["Chat Platforms<br>Discord, WhatsApp APIs"]
+    28037["Data Management &amp; Structure<br>TypeScript/Prisma"] -->|persists to| 28042["Databases<br>Prisma, SQLite"]
+    28008["WhatsApp Integration"] -->|connects to| 28022["WhatsApp Platform<br>WhatsApp API"]
+    28009["Discord Bot"] -->|connects to| 28021["Discord Platform<br>Discord API"]
+    28009["Discord Bot"] -->|manages processes via| 28024["Developer &amp; Ops APIs<br>GitHub, PM2, etc."]
+    28010["API Server"] -->|calls| 28023["AI APIs<br>Google Gemini, etc."]
+    28010["API Server"] -->|integrates with| 28024["Developer &amp; Ops APIs<br>GitHub, PM2, etc."]
+    28020["End User<br>External Actor"] -->|interacts via HTTP| 28010["API Server"]
+    28020["End User<br>External Actor"] -->|interacts via Discord| 28009["Discord Bot"]
+    28020["End User<br>External Actor"] -->|interacts via WhatsApp| 28008["WhatsApp Integration"]
+    28007["Shared Infrastructure"] -->|persists to/reads from| 28025["Application Database<br>SQL/SQLite"]
+    28007["Shared Infrastructure"] -->|sends notifications to| 28021["Discord Platform<br>Discord API"]
+    28007["Shared Infrastructure"] -->|interacts with| 28024["Developer &amp; Ops APIs<br>GitHub, PM2, etc."]
+    28032["Domain Services<br>TypeScript"] -->|use| 28036["Shared Utilities &amp; Classes<br>TypeScript"]
+    28032["Domain Services<br>TypeScript"] -->|access data via| 28037["Data Management &amp; Structure<br>TypeScript/Prisma"]
+    28032["Domain Services<br>TypeScript"] -->|calls| 28040["AI APIs<br>Google Gemini, etc."]
+    28032["Domain Services<br>TypeScript"] -->|calls| 28041["Version Control APIs<br>GitHub API, etc."]
+`;
+
+  // Cargar Mermaid solo una vez al montar
+  useEffect(() => {
+    // Cargar script de Mermaid si no está presente
+    if (!window.mermaid) {
+      const script = document.createElement("script");
+      script.src =
+        "https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js";
+      script.async = true;
+      script.onload = () => {
+        if (window.mermaid) {
+          window.mermaid.initialize({ startOnLoad: false, theme: "dark" });
+          window.mermaid.run();
+        }
+      };
+      document.body.appendChild(script);
+    } else {
+      window.mermaid.initialize({ startOnLoad: false, theme: "dark" });
+      window.mermaid.run();
+    }
+  }, []);
+
+  return (
+    <section className="mb-20">
+      <div className="bg-gray-900/80 rounded-2xl p-8 shadow-xl border border-purple-900/30 max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">
+                Documentación Completa
+              </span>
+            </h2>
+            <p className="text-lg text-purple-200">
+              Plataforma API modular para integración de servicios
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-bold bg-${versionColor}-900 text-${versionColor}-200 border border-${versionColor}-500`}
+            >
+              v{version} - {versionLabel}
+            </span>
+            <div className="flex gap-2">
+              <a
+                href="https://github.com/Hiroshi025/Nebura-AI"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm flex items-center gap-1"
+              >
+                <FaGithub /> Repositorio
+              </a>
+              <a
+                href="https://help.hiroshi-dev.me/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1 bg-blue-900/50 hover:bg-blue-800/50 rounded-lg text-sm flex items-center gap-1"
+              >
+                <FaLink /> Help Center
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar de navegación */}
+          <div className="lg:col-span-1 bg-gray-800/50 rounded-xl p-4 border border-gray-700 h-fit sticky top-4">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <FaCodeBranch className="text-purple-400" />
+              Contenidos
+            </h3>
+            <nav className="space-y-2">
+              {[
+                { id: "overview", label: "Visión General", icon: <FaSearch /> },
+                {
+                  id: "architecture",
+                  label: "Arquitectura",
+                  icon: <FaServer />,
+                },
+                { id: "modules", label: "Módulos", icon: <FaCodeBranch /> },
+                {
+                  id: "configuration",
+                  label: "Configuración",
+                  icon: <FaKey />,
+                },
+                { id: "examples", label: "Ejemplos", icon: <FaHistory /> },
+                { id: "development", label: "Desarrollo", icon: <FaGithub /> },
+                { id: "support", label: "Soporte", icon: <FaDiscord /> },
+              ].map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-700/50 transition-colors text-gray-300 hover:text-white"
+                >
+                  <span className="text-purple-400">{item.icon}</span>
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          {/* Contenido principal */}
+          <div className="lg:col-span-3">
+            {/* Sección Visión General */}
+            <section id="overview" className="mb-12 scroll-mt-20">
+              <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <FaSearch className="text-purple-400" />
+                Visión General del Proyecto
+              </h3>
+              <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+                <p className="text-gray-300 mb-4">
+                  Nebura Works es una plataforma API modular diseñada para
+                  integrar múltiples servicios con arquitectura escalable y
+                  seguridad avanzada.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    {
+                      title: "Arquitectura Modular",
+                      desc: "Componentes independientes que se integran fácilmente",
+                      icon: <FaCodeBranch className="text-blue-400 text-xl" />,
+                    },
+                    {
+                      title: "Comunicación en Tiempo Real",
+                      desc: "WebSockets y eventos para interacciones instantáneas",
+                      icon: <FaServer className="text-green-400 text-xl" />,
+                    },
+                    {
+                      title: "Seguridad Avanzada",
+                      desc: "JWT, rate limiting, CORS y protección contra ataques",
+                      icon: <FaShieldAlt className="text-yellow-400 text-xl" />,
+                    },
+                    {
+                      title: "Monitoreo Integrado",
+                      desc: "Métricas, logs y alertas en tiempo real",
+                      icon: <FaHistory className="text-purple-400 text-xl" />,
+                    },
+                  ].map((feature, i) => (
+                    <div
+                      key={i}
+                      className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 flex items-start gap-3"
+                    >
+                      {feature.icon}
+                      <div>
+                        <h4 className="font-bold text-white">
+                          {feature.title}
+                        </h4>
+                        <p className="text-sm text-gray-400">{feature.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Sección Arquitectura */}
+            <section id="architecture" className="mb-12 scroll-mt-20">
+              <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <FaServer className="text-purple-400" />
+                Arquitectura del Sistema
+              </h3>
+              <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+                <p className="text-gray-300 mb-6">
+                  La arquitectura sigue un patrón modular con un orquestador
+                  central que gestiona los diferentes servicios y sus
+                  interacciones.
+                </p>
+
+                {/* Diagrama Mermaid Mejorado */}
+                <div className="bg-gray-900 rounded-xl p-4 my-6 border border-purple-800/30 overflow-x-auto relative">
+                  <div className="absolute top-3 right-3 flex gap-2 z-10">
+                    <button
+                      onClick={() => handleZoom(1.2)}
+                      className="p-1 bg-purple-700 hover:bg-purple-600 text-white rounded text-xs"
+                      title="Acercar"
+                    >
+                      <FaSearchPlus />
+                    </button>
+                    <button
+                      onClick={() => handleZoom(1 / 1.2)}
+                      className="p-1 bg-purple-700 hover:bg-purple-600 text-white rounded text-xs"
+                      title="Alejar"
+                    >
+                      <FaSearchMinus />
+                    </button>
+                    <button
+                      onClick={handleReset}
+                      className="p-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs"
+                      title="Resetear zoom"
+                    >
+                      <FaExpand />
+                    </button>
+                  </div>
+
+                  <div
+                    ref={mermaidContainerRef}
+                    className="mermaid"
+                    style={{
+                      minWidth: "800px",
+                      minHeight: "600px",
+                      transition: "transform 0.2s",
+                      cursor: "grab",
+                    }}
+                  >
+                    {`
+flowchart TD
+    subgraph External["Servicios Externos"]
+        DiscordAPI["Discord API"]
+        WhatsAppAPI["WhatsApp API"]
+        GeminiAPI["Google Gemini API"]
+        GitHubAPI["GitHub API"]
+        Database["Base de Datos"]
+    end
+    
+    subgraph Core["Núcleo Nebura"]
+        Orchestrator[("Orquestador Principal<br><small>Node.js/TypeScript</small>")]
+        
+        subgraph Modules["Módulos"]
+            APIServer["API Server<br><small>Express/Socket.IO</small>"]
+            DiscordBot["Bot Discord<br><small>discord.js</small>"]
+            WhatsAppClient["Cliente WhatsApp<br><small>whatsapp-web.js</small>"]
+        end
+        
+        subgraph Shared["Recursos Compartidos"]
+            Utilities["Utilidades<br><small>Logger, Config</small>"]
+            DataLayer["Capa de Datos<br><small>Prisma/ORM</small>"]
+            Security["Seguridad<br><small>JWT, Rate Limiting</small>"]
+        end
+    end
+    
+    %% Conexiones
+    Orchestrator --> APIServer
+    Orchestrator --> DiscordBot
+    Orchestrator --> WhatsAppClient
+    
+    APIServer --> Utilities
+    APIServer --> DataLayer
+    APIServer --> Security
+    
+    DiscordBot --> Utilities
+    DiscordBot --> DataLayer
+    WhatsAppClient --> Utilities
+    
+    APIServer -.-> GeminiAPI
+    APIServer -.-> GitHubAPI
+    DiscordBot -.-> DiscordAPI
+    WhatsAppClient -.-> WhatsAppAPI
+    DataLayer -.-> Database
+    
+    %% Estilos
+    classDef external fill:#2d3748,stroke:#4a5568,color:#e2e8f0;
+    classDef core fill:#1a365d,stroke:#2c5282,color:#bee3f8;
+    classDef modules fill:#4c1d95,stroke:#6b46c1,color:#e9d8fd;
+    classDef shared fill:#5f370e,stroke:#975a16,color:#feebc8;
+    
+    class External external
+    class Core core
+    class Modules modules
+    class Shared shared
+                `}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                  <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-blue-500">
+                    <h4 className="font-bold text-white mb-2">
+                      Orquestador Principal
+                    </h4>
+                    <p className="text-sm text-gray-400">
+                      Gestiona el ciclo de vida de todos los módulos y
+                      servicios.
+                    </p>
+                  </div>
+                  <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-purple-500">
+                    <h4 className="font-bold text-white mb-2">Módulos</h4>
+                    <p className="text-sm text-gray-400">
+                      Componentes independientes que pueden
+                      activarse/desactivarse.
+                    </p>
+                  </div>
+                  <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-yellow-500">
+                    <h4 className="font-bold text-white mb-2">
+                      Recursos Compartidos
+                    </h4>
+                    <p className="text-sm text-gray-400">
+                      Funcionalidades comunes reutilizables entre módulos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Sección Módulos */}
+            <section id="modules" className="mb-12 scroll-mt-20">
+              <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <FaCodeBranch className="text-purple-400" />
+                Módulos Principales
+              </h3>
+              <div className="space-y-6">
+                {[
+                  {
+                    title: "API Server",
+                    icon: <FaServer className="text-blue-400 text-2xl" />,
+                    description:
+                      "Servidor HTTP/WebSocket con Express y Socket.IO para APIs REST y comunicación en tiempo real.",
+                    features: [
+                      "Documentación Swagger automática",
+                      "Autenticación JWT y OAuth2",
+                      "Rate limiting y protección CORS",
+                      "Métricas de rendimiento integradas",
+                    ],
+                    example: `import { APIServer } from '@nebura/core';
+const server = new APIServer();
+server.start();`,
+                  },
+                  {
+                    title: "Discord Bot",
+                    icon: <FaDiscord className="text-purple-400 text-2xl" />,
+                    description:
+                      "Bot de Discord con carga dinámica de comandos y eventos.",
+                    features: [
+                      "Hot-reload de comandos",
+                      "Sistema de permisos avanzado",
+                      "Integración con API Server",
+                      "Logging detallado",
+                    ],
+                    example: `client.on('interactionCreate', (interaction) => {
+  if (!interaction.isCommand()) return;
+  // Manejo de comandos
+});`,
+                  },
+                  {
+                    title: "WhatsApp Client",
+                    icon: <FaWhatsapp className="text-green-400 text-2xl" />,
+                    description:
+                      "Cliente WhatsApp con registro de mensajes y comandos.",
+                    features: [
+                      "Autenticación QR persistente",
+                      "Backup automático de chats",
+                      "Integración con base de datos",
+                      "Comandos administrativos",
+                    ],
+                    example: `client.on('message', (msg) => {
+  if (msg.body === '!status') {
+    msg.reply('Sistema operativo');
+  }
+});`,
+                  },
+                ].map((module, i) => (
+                  <div
+                    key={i}
+                    className="bg-gray-800/50 rounded-xl p-6 border border-gray-700"
+                  >
+                    <div className="flex items-start gap-4 mb-4">
+                      {module.icon}
+                      <div>
+                        <h4 className="text-xl font-bold text-white">
+                          {module.title}
+                        </h4>
+                        <p className="text-gray-400">{module.description}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h5 className="font-bold text-gray-300 mb-2">
+                          Características:
+                        </h5>
+                        <ul className="list-disc list-inside text-gray-400 space-y-1">
+                          {module.features.map((feat, j) => (
+                            <li key={j}>{feat}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-gray-300 mb-2">
+                          Ejemplo:
+                        </h5>
+                        <pre className="bg-gray-900 rounded p-3 text-xs overflow-x-auto">
+                          {module.example}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Otras secciones (Configuración, Ejemplos, etc.) */}
+            {/* ... (mantener estructura similar a las secciones anteriores) ... */}
+
+            {/* Sección Soporte */}
+            <section id="support" className="mb-12 scroll-mt-20">
+              <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <FaDiscord className="text-purple-400" />
+                Soporte y Enlaces
+              </h3>
+              <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-bold text-white mb-3">
+                      Documentación Oficial
+                    </h4>
+                    <div className="space-y-2">
+                      {[
+                        {
+                          name: "Documentación API",
+                          url: "https://api.nebura.example/docs",
+                          icon: <FaServer />,
+                        },
+                        {
+                          name: "Guía Discord",
+                          url: "https://docs.nebura.example/discord",
+                          icon: <FaDiscord />,
+                        },
+                        {
+                          name: "Guía WhatsApp",
+                          url: "https://docs.nebura.example/whatsapp",
+                          icon: <FaWhatsapp />,
+                        },
+                        {
+                          name: "TypeDoc",
+                          url: "https://docs.nebura.example/typedoc",
+                          icon: <FaCodeBranch />,
+                        },
+                      ].map((doc, i) => (
+                        <a
+                          key={i}
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 px-4 py-3 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
+                        >
+                          <span className="text-purple-400">{doc.icon}</span>
+                          <span>{doc.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-3">
+                      Soporte Técnico
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-blue-500">
+                        <h5 className="font-bold text-white mb-1">Discord</h5>
+                        <p className="text-sm text-gray-400">
+                          Únete a nuestro servidor para soporte en tiempo real.
+                        </p>
+                        <a
+                          href="#"
+                          className="text-blue-400 text-sm hover:underline mt-2 inline-block"
+                        >
+                          Unirse al servidor
+                        </a>
+                      </div>
+                      <div className="bg-gray-900/50 p-4 rounded-lg border-l-4 border-green-500">
+                        <h5 className="font-bold text-white mb-1">
+                          GitHub Issues
+                        </h5>
+                        <p className="text-sm text-gray-400">
+                          Reporta bugs o solicita nuevas características.
+                        </p>
+                        <a
+                          href="https://github.com/Hiroshi025/Nebura-AI/issues"
+                          className="text-green-400 text-sm hover:underline mt-2 inline-block"
+                        >
+                          Abrir issue
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+function getJsonStats(obj: any) {
+  let keys = 0,
+    arrays = 0,
+    objects = 0,
+    maxDepth = 0;
+  function walk(o: any, depth: number) {
+    if (Array.isArray(o)) {
+      arrays++;
+      maxDepth = Math.max(maxDepth, depth);
+      o.forEach((v) => walk(v, depth + 1));
+    } else if (o && typeof o === "object") {
+      objects++;
+      maxDepth = Math.max(maxDepth, depth);
+      for (const k in o) {
+        keys++;
+        walk(o[k], depth + 1);
+      }
+    }
+  }
+  walk(obj, 1);
+  return { keys, arrays, objects, maxDepth };
+}
+
+// Utilidad para convertir JSON a CSV plano (solo arrays de objetos)
+function jsonToCsv(json: any): string {
+  if (!Array.isArray(json)) return "";
+  if (json.length === 0) return "";
+  const keys = Object.keys(json[0]);
+  const csvRows = [
+    keys.join(","),
+    ...json.map((row) =>
+      keys.map((k) => JSON.stringify(row[k] ?? "")).join(",")
+    ),
+  ];
+  return csvRows.join("\n");
+}
+
+// Utilidad para convertir CSV a JSON (simple)
+function csvToJson(csv: string): any[] {
+  const [header, ...lines] = csv.trim().split(/\r?\n/);
+  const keys = header.split(",");
+  return lines.map((line) => {
+    const values = line.split(",");
+    const obj: any = {};
+    keys.forEach((k, i) => (obj[k] = JSON.parse(values[i] || '""')));
+    return obj;
+  });
+}
+
+// Utilidad para detectar tipos de valores en JSON
+function getJsonTypes(obj: any, types = new Set<string>()) {
+  if (Array.isArray(obj)) {
+    types.add("array");
+    obj.forEach((v) => getJsonTypes(v, types));
+  } else if (obj && typeof obj === "object") {
+    types.add("object");
+    Object.values(obj).forEach((v) => getJsonTypes(v, types));
+  } else {
+    types.add(typeof obj);
+  }
+  return Array.from(types);
+}
+
+const JsonValidator = () => {
+  const [input, setInput] = useState("{\n  \n}");
+  const [result, setResult] = useState<{
+    valid: boolean;
+    error?: string;
+    line?: number;
+    suggestion?: string;
+    stats?: {
+      keys: number;
+      arrays: number;
+      objects: number;
+      maxDepth: number;
+      size: number;
+      uniqueKeys: number;
+      types: string[];
+    };
+    parsed?: any;
+  }>({
+    valid: true,
+    stats: {
+      keys: 0,
+      arrays: 0,
+      objects: 0,
+      maxDepth: 0,
+      size: 0,
+      uniqueKeys: 0,
+      types: [],
+    },
+  });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // NUEVO: Estados para conversiones y formato
+  const [yamlValue, setYamlValue] = useState("");
+  const [csvValue, setCsvValue] = useState("");
+  const [base64Value, setBase64Value] = useState("");
+  const [formatMode, setFormatMode] = useState<"pretty" | "compact">("pretty");
+
+  // NUEVO: Estado para el convertidor activo (solo para los 3 convertidores)
+  const [activeConverter, setActiveConverter] = useState<
+    "yaml" | "base64" | "csv"
+  >("yaml");
+
+  // Utilidad para obtener estadísticas avanzadas
+  function getJsonStatsAdv(obj: any) {
+    let keys = 0,
+      arrays = 0,
+      objects = 0,
+      maxDepth = 0;
+    const keySet = new Set<string>();
+    function walk(o: any, depth: number) {
+      if (Array.isArray(o)) {
+        arrays++;
+        maxDepth = Math.max(maxDepth, depth);
+        o.forEach((v) => walk(v, depth + 1));
+      } else if (o && typeof o === "object") {
+        objects++;
+        maxDepth = Math.max(maxDepth, depth);
+        for (const k in o) {
+          keys++;
+          keySet.add(k);
+          walk(o[k], depth + 1);
+        }
+      }
+    }
+    walk(obj, 1);
+    return {
+      keys,
+      arrays,
+      objects,
+      maxDepth,
+      uniqueKeys: keySet.size,
+      types: getJsonTypes(obj),
+    };
+  }
+
+  // NUEVO: Validación y conversión
+  function validateJson(str: string) {
+    try {
+      const parsed = JSON.parse(str);
+      const stats = getJsonStatsAdv(parsed);
+      const size = new Blob([str]).size;
+      setResult({ valid: true, stats: { ...stats, size }, parsed });
+      // Conversiones automáticas
+      setYamlValue(yaml.dump(parsed));
+      setBase64Value(btoa(unescape(encodeURIComponent(str))));
+      setCsvValue(Array.isArray(parsed) ? jsonToCsv(parsed) : "");
+    } catch (e: any) {
+      // Busca línea del error
+      let line = 1;
+      const m = /at position (\d+)/.exec(e.message);
+      if (m) {
+        const pos = parseInt(m[1]);
+        line = str.slice(0, pos).split("\n").length;
+      }
+      let suggestion =
+        "Revisa la sintaxis JSON. Usa comillas dobles, separa con comas y verifica llaves/corchetes.";
+      if (/Unexpected token/.test(e.message))
+        suggestion =
+          "Puede que falte una coma, comillas o haya un carácter inesperado.";
+      if (/Unexpected end/.test(e.message))
+        suggestion = "Parece que falta cerrar una llave, corchete o comillas.";
+      setResult({ valid: false, error: e.message, line, suggestion });
+      setYamlValue("");
+      setBase64Value("");
+      setCsvValue("");
+    }
+  }
+
+  // NUEVO: Formatear JSON
+  const handleFormat = (mode: "pretty" | "compact") => {
+    if (!result.valid || !result.parsed) return;
+    setInput(
+      mode === "pretty"
+        ? JSON.stringify(result.parsed, null, 2)
+        : JSON.stringify(result.parsed)
+    );
+    setFormatMode(mode);
+  };
+
+  // NUEVO: Minificar/Beautify YAML
+  const handleYamlFormat = (pretty: boolean) => {
+    if (!result.valid || !result.parsed) return;
+    setYamlValue(
+      pretty
+        ? yaml.dump(result.parsed)
+        : yaml.dump(result.parsed, { indent: 0, flowLevel: -1 })
+    );
+  };
+
+  // NUEVO: Copiar utilidades
+  const copyToClipboard = (val: string) => {
+    navigator.clipboard.writeText(val);
+  };
+
+  // NUEVO: Descargar archivo
+  const downloadFile = (
+    content: string,
+    filename: string,
+    type = "text/plain"
+  ) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // NUEVO: Importar archivo
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setInput(ev.target?.result as string);
+    };
+    reader.readAsText(file);
+  };
+
+  // NUEVO: Convertir YAML/Base64/CSV a JSON
+  const handleYamlToJson = () => {
+    try {
+      const obj = yaml.load(yamlValue);
+      setInput(JSON.stringify(obj, null, 2));
+    } catch (e) {
+      alert("YAML inválido");
+    }
+  };
+  const handleBase64ToJson = () => {
+    try {
+      const str = decodeURIComponent(escape(atob(base64Value)));
+      setInput(str);
+    } catch (e) {
+      alert("Base64 inválido");
+    }
+  };
+  const handleCsvToJson = () => {
+    try {
+      const arr = csvToJson(csvValue);
+      setInput(JSON.stringify(arr, null, 2));
+    } catch (e) {
+      alert("CSV inválido");
+    }
+  };
+
+  useEffect(() => {
+    validateJson(input);
+    // eslint-disable-next-line
+  }, [input]);
+
+  return (
+    <div className="bg-gray-800/60 rounded-xl p-6 mb-2 shadow-lg border border-purple-700/20 max-w-2xl mx-auto">
+      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <FaCodeBranch className="text-purple-400" /> Validador y Herramientas
+        JSON
+      </h3>
+      {/* --- Validador JSON SIEMPRE visible --- */}
+      <div className="mb-4">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          className="w-full h-48 px-4 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono focus:ring-2 focus:ring-purple-600 focus:outline-none resize-vertical"
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
+          placeholder="Pega aquí tu código JSON..."
+        />
+      </div>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => handleFormat("pretty")}
+          className="px-3 py-1 bg-purple-700 text-white rounded text-xs"
+        >
+          Formatear
+        </button>
+        <button
+          onClick={() => handleFormat("compact")}
+          className="px-3 py-1 bg-gray-700 text-gray-200 rounded text-xs"
+        >
+          Minificar
+        </button>
+        <button
+          onClick={() => setInput("")}
+          className="px-3 py-1 bg-red-700 text-white rounded text-xs"
+        >
+          Limpiar
+        </button>
+        <button
+          onClick={() => copyToClipboard(input)}
+          className="px-3 py-1 bg-blue-700 text-white rounded text-xs"
+        >
+          Copiar JSON
+        </button>
+        <button
+          onClick={() => downloadFile(input, "data.json", "application/json")}
+          className="px-3 py-1 bg-green-700 text-white rounded text-xs"
+        >
+          Descargar JSON
+        </button>
+        <label className="px-3 py-1 bg-gray-700 text-gray-200 rounded text-xs cursor-pointer">
+          Importar
+          <input
+            type="file"
+            accept=".json,.txt"
+            onChange={handleImport}
+            className="hidden"
+          />
+        </label>
+      </div>
+      {result.valid ? (
+        <div className="bg-green-900/40 border border-green-700 rounded-lg p-4 text-green-200 mb-6">
+          <b>JSON válido.</b>
+          <div className="mt-2 text-sm grid grid-cols-2 gap-2">
+            <span>
+              Claves totales: <b>{result.stats?.keys}</b>
+            </span>
+            <span>
+              Claves únicas: <b>{result.stats?.uniqueKeys}</b>
+            </span>
+            <span>
+              Objetos: <b>{result.stats?.objects}</b>
+            </span>
+            <span>
+              Arrays: <b>{result.stats?.arrays}</b>
+            </span>
+            <span>
+              Profundidad máxima: <b>{result.stats?.maxDepth}</b>
+            </span>
+            <span>
+              Tamaño: <b>{result.stats?.size} bytes</b>
+            </span>
+            <span>
+              Tipos: <b>{result.stats?.types?.join(", ")}</b>
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-red-900/40 border border-red-700 rounded-lg p-4 text-red-200 mb-6">
+          <b>Error de sintaxis:</b> {result.error}
+          <br />
+          <span>
+            Línea: <b>{result.line}</b>
+          </span>
+          <br />
+          <span>Sugerencia: {result.suggestion}</span>
+        </div>
+      )}
+
+      {/* --- Menú de paginación SOLO para los convertidores --- */}
+      <div className="flex justify-center gap-2 mb-4">
+        <button
+          onClick={() => setActiveConverter("yaml")}
+          className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+            activeConverter === "yaml"
+              ? "bg-purple-700 text-white"
+              : "bg-gray-700 text-gray-300 hover:bg-purple-900/30"
+          }`}
+        >
+          YAML
+        </button>
+        <button
+          onClick={() => setActiveConverter("base64")}
+          className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+            activeConverter === "base64"
+              ? "bg-purple-700 text-white"
+              : "bg-gray-700 text-gray-300 hover:bg-purple-900/30"
+          }`}
+        >
+          Base64
+        </button>
+        <button
+          onClick={() => setActiveConverter("csv")}
+          className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+            activeConverter === "csv"
+              ? "bg-purple-700 text-white"
+              : "bg-gray-700 text-gray-300 hover:bg-purple-900/30"
+          }`}
+        >
+          CSV
+        </button>
+      </div>
+
+      {/* SOLO muestra el convertidor activo */}
+      {activeConverter === "yaml" && (
+        <div className="bg-gray-900/70 rounded-lg p-4 border border-gray-700 flex flex-col md:col-span-2 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-bold text-purple-300">YAML</span>
+            <button
+              onClick={() => handleYamlFormat(true)}
+              className="px-2 py-0.5 text-xs bg-purple-700 text-white rounded"
+            >
+              Beautify
+            </button>
+            <button
+              onClick={() => handleYamlFormat(false)}
+              className="px-2 py-0.5 text-xs bg-gray-700 text-gray-200 rounded"
+            >
+              Minify
+            </button>
+            <button
+              onClick={() => copyToClipboard(yamlValue)}
+              className="px-2 py-0.5 text-xs bg-blue-700 text-white rounded"
+            >
+              Copiar
+            </button>
+            <button
+              onClick={() => downloadFile(yamlValue, "data.yaml", "text/yaml")}
+              className="px-2 py-0.5 text-xs bg-green-700 text-white rounded"
+            >
+              Descargar
+            </button>
+            <button
+              onClick={handleYamlToJson}
+              className="px-2 py-0.5 text-xs bg-pink-700 text-white rounded"
+            >
+              YAML → JSON
+            </button>
+          </div>
+          <textarea
+            value={yamlValue}
+            onChange={(e) => setYamlValue(e.target.value)}
+            className="w-full h-24 md:h-32 px-2 py-1 rounded bg-gray-800 text-gray-200 font-mono text-xs mb-1"
+            spellCheck={false}
+            placeholder="YAML convertido"
+          />
+        </div>
+      )}
+      {activeConverter === "base64" && (
+        <div className="bg-gray-900/70 rounded-lg p-4 border border-gray-700 flex flex-col md:col-span-2 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-bold text-purple-300">Base64</span>
+            <button
+              onClick={() => copyToClipboard(base64Value)}
+              className="px-2 py-0.5 text-xs bg-blue-700 text-white rounded"
+            >
+              Copiar
+            </button>
+            <button
+              onClick={() =>
+                downloadFile(base64Value, "data.b64", "text/plain")
+              }
+              className="px-2 py-0.5 text-xs bg-green-700 text-white rounded"
+            >
+              Descargar
+            </button>
+            <button
+              onClick={handleBase64ToJson}
+              className="px-2 py-0.5 text-xs bg-pink-700 text-white rounded"
+            >
+              Base64 → JSON
+            </button>
+          </div>
+          <textarea
+            value={base64Value}
+            onChange={(e) => setBase64Value(e.target.value)}
+            className="w-full h-24 md:h-32 px-2 py-1 rounded bg-gray-800 text-gray-200 font-mono text-xs mb-1"
+            spellCheck={false}
+            placeholder="Base64 convertido"
+          />
+        </div>
+      )}
+      {activeConverter === "csv" && (
+        <div className="bg-gray-900/70 rounded-lg p-4 border border-gray-700 flex flex-col md:col-span-2 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-bold text-purple-300">CSV</span>
+            <button
+              onClick={() => copyToClipboard(csvValue)}
+              className="px-2 py-0.5 text-xs bg-blue-700 text-white rounded"
+            >
+              Copiar
+            </button>
+            <button
+              onClick={() => downloadFile(csvValue, "data.csv", "text/csv")}
+              className="px-2 py-0.5 text-xs bg-green-700 text-white rounded"
+            >
+              Descargar
+            </button>
+            <button
+              onClick={handleCsvToJson}
+              className="px-2 py-0.5 text-xs bg-pink-700 text-white rounded"
+            >
+              CSV → JSON
+            </button>
+          </div>
+          <textarea
+            value={csvValue}
+            onChange={(e) => setCsvValue(e.target.value)}
+            className="w-full h-24 md:h-32 px-2 py-1 rounded bg-gray-800 text-gray-200 font-mono text-xs mb-1"
+            spellCheck={false}
+            placeholder="CSV convertido (solo arrays de objetos)"
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function DocumentationPage() {
   const router = useRouter();
   const [isKeyGeneratorOpen, setIsKeyGeneratorOpen] = useState(false);
+  const [isJsonValidatorOpen, setIsJsonValidatorOpen] = useState(false);
+  // NUEVO: Estados para los nuevos diálogos de herramientas
+  const [isUnixConverterOpen, setIsUnixConverterOpen] = useState(false);
+  const [isQrGeneratorOpen, setIsQrGeneratorOpen] = useState(false);
+  const [isWebhookTesterOpen, setIsWebhookTesterOpen] = useState(false);
   const [generatedKey, setGeneratedKey] = useState("");
   const [keyType, setKeyType] = useState("license");
   const [keyLength, setKeyLength] = useState(32);
@@ -651,6 +1913,7 @@ export default function DocumentationPage() {
     symbols: true,
   });
   // NUEVO: Payload editable para JWT
+
   const [jwtPayload, setJwtPayload] = useState(
     JSON.stringify(
       {
@@ -783,30 +2046,21 @@ export default function DocumentationPage() {
     // eslint-disable-next-line
   }, [keyType, keyLength, pwOptions, jwtPayload]);
 
+  // NUEVO: Selección de versión de documentación (solo muestra la estable)
+  const currentDocVersion =
+    documentationVersions.find((v) => !v.deprecated) ||
+    documentationVersions[0];
+
   return (
     <main className="min-h-screen bg-gray-950 text-gray-200 overflow-x-hidden">
-      {/* Header animado */}
+      {/* Header profesional */}
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="py-20 px-4 bg-gradient-to-br from-gray-900 to-purple-900/70 relative"
       >
-        <div className="absolute inset-0 overflow-hidden">
-          <motion.div
-            animate={{
-              x: ["-50%", "150%"],
-              y: ["-50%", "50%"],
-            }}
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            className="absolute w-[200%] h-[200%] bg-gradient-radial from-purple-500/10 to-transparent opacity-20"
-          />
-        </div>
-
+        {/* ...existing animated background... */}
         <div className="container mx-auto max-w-4xl text-center relative z-10">
           <motion.h1
             initial={{ scale: 0.9 }}
@@ -818,7 +2072,6 @@ export default function DocumentationPage() {
               Documentación del Proyecto
             </span>
           </motion.h1>
-
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -828,7 +2081,7 @@ export default function DocumentationPage() {
             Este proyecto es una API modular que integra múltiples servicios
             como Discord, WhatsApp, GitHub, Google AI, y más.
           </motion.p>
-
+          {/* Tabs principales */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -845,7 +2098,6 @@ export default function DocumentationPage() {
             >
               <FaServer className="inline mr-2" /> Funcionalidades
             </button>
-
             <button
               onClick={() => setActiveTab("security")}
               className={`px-6 py-3 rounded-lg font-medium transition-all ${
@@ -856,7 +2108,6 @@ export default function DocumentationPage() {
             >
               <FaShieldAlt className="inline mr-2" /> Seguridad
             </button>
-
             <button
               onClick={() => setActiveTab("docs")}
               className={`px-6 py-3 rounded-lg font-medium transition-all ${
@@ -867,27 +2118,77 @@ export default function DocumentationPage() {
             >
               <FaLink className="inline mr-2" /> Enlaces de Documentación
             </button>
-
-            <button
-              onClick={() => setIsKeyGeneratorOpen(true)}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all"
-            >
-              <FaKey className="inline mr-2" /> Generador de Claves
-            </button>
+            {/* Herramientas: agrupadas en un solo botón */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg font-medium hover:from-green-700 hover:to-blue-700 transition-all flex items-center gap-2">
+                  <FaCodeBranch className="inline mr-2" /> Herramientas
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-800 border-gray-700">
+                <DropdownMenuItem
+                  onClick={() => setIsJsonValidatorOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaCodeBranch className="mr-2" /> Validador de JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsKeyGeneratorOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaKey className="mr-2" /> Generador de Claves
+                </DropdownMenuItem>
+                {/* NUEVO: Conversor Unix */}
+                <DropdownMenuItem
+                  onClick={() => setIsUnixConverterOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaHistory className="mr-2" /> Conversor Unix
+                </DropdownMenuItem>
+                {/* NUEVO: Generador de QR */}
+                <DropdownMenuItem
+                  onClick={() => setIsQrGeneratorOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaWhatsapp className="mr-2" /> Generador de QR
+                </DropdownMenuItem>
+                {/* NUEVO: Tester de Webhooks */}
+                <DropdownMenuItem
+                  onClick={() => setIsWebhookTesterOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaLink className="mr-2" /> Tester de Webhooks
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </motion.div>
         </div>
       </motion.header>
 
-      {/* Estado del sistema y buscador */}
+      {/* NUEVO: Sección de Herramientas profesionales */}
       <section className="py-10 px-4">
         <div className="container mx-auto max-w-6xl">
           <SystemStatus />
-          <UnixDateConverter /> {/* <-- Agrega esta línea aquí */}
-          <DocSearch features={features} />
         </div>
       </section>
 
-      {/* Main Content */}
+      {/* NUEVO: Sección de Documentación y Buscador */}
+      <section className="py-10 px-4 bg-gray-950/80">
+        <div className="container mx-auto max-w-6xl">
+          <DocSearch
+            features={features}
+            documentationSections={documentationSections}
+          />
+          {/* Documentación completa siempre visible aquí */}
+          <FullDocumentation
+            version={currentDocVersion.version}
+            versionLabel={currentDocVersion.label}
+            versionColor={currentDocVersion.color}
+          />
+        </div>
+      </section>
+
+      {/* Main Content: Tabs para funcionalidades, seguridad y enlaces */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <AnimatePresence mode="wait">
@@ -1158,7 +2459,7 @@ export default function DocumentationPage() {
         </div>
       </footer>
 
-      {/* Dialogo Generador de Claves */}
+      {/* Dialogos para herramientas */}
       <Dialog open={isKeyGeneratorOpen} onOpenChange={setIsKeyGeneratorOpen}>
         <DialogContent className="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
           <DialogHeader>
@@ -1379,6 +2680,62 @@ export default function DocumentationPage() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* NUEVO: Dialogo para el validador de JSON */}
+      <Dialog open={isJsonValidatorOpen} onOpenChange={setIsJsonValidatorOpen}>
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Validador de JSON
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Pega tu código JSON para validarlo y obtener estadísticas.
+            </DialogDescription>
+          </DialogHeader>
+          <JsonValidator />
+        </DialogContent>
+      </Dialog>
+      {/* NUEVO: Dialogo para Conversor Unix */}
+      <Dialog open={isUnixConverterOpen} onOpenChange={setIsUnixConverterOpen}>
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Conversor de Fechas Unix
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Convierte entre timestamp Unix y fecha legible.
+            </DialogDescription>
+          </DialogHeader>
+          <UnixDateConverter />
+        </DialogContent>
+      </Dialog>
+      {/* NUEVO: Dialogo para Generador de QR */}
+      <Dialog open={isQrGeneratorOpen} onOpenChange={setIsQrGeneratorOpen}>
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Generador de QR
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Genera códigos QR fácilmente.
+            </DialogDescription>
+          </DialogHeader>
+          <QrGenerator />
+        </DialogContent>
+      </Dialog>
+      {/* NUEVO: Dialogo para Tester de Webhooks */}
+      <Dialog open={isWebhookTesterOpen} onOpenChange={setIsWebhookTesterOpen}>
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Tester de Webhooks
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Prueba y depura endpoints de Webhooks.
+            </DialogDescription>
+          </DialogHeader>
+          <WebhookTester />
         </DialogContent>
       </Dialog>
     </main>
