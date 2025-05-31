@@ -20,15 +20,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
-    formats: ['image/avif', 'image/webp'],
+    unoptimized: true
   },
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
-    workerThreads: true,
-    cpus: 2,
+    parallelServerCompiles: true
   },
 };
 

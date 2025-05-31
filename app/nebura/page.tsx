@@ -100,13 +100,13 @@ export default function LandingPage() {
               Anime & Manga
             </Link>
             <Link
-              href="/chat"
+              href="/"
               className="text-gray-300 hover:text-purple-400 transition-colors"
             >
               Chat
             </Link>
             <Button
-              onClick={() => router.push("/auth")}
+              onClick={() => router.push("/")}
               variant="outline"
               className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
             >
@@ -151,7 +151,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 animate-fade-in-delay-long">
             <Button
-              onClick={() => router.push("/auth")}
+              onClick={() => router.push("/")}
               size="lg"
               className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white border-0"
             >
@@ -770,14 +770,14 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
             <Button
-              onClick={() => router.push("/auth")}
+              onClick={() => router.push("/")}
               size="lg"
               className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
             >
               Crear Cuenta
             </Button>
             <Button
-              onClick={() => router.push("/chat")}
+              onClick={() => router.push("/")}
               size="lg"
               variant="outline"
               className="border-purple-400 text-purple-400 hover:bg-purple-500 hover:text-white"
