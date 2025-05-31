@@ -5,6 +5,7 @@
     "**/.hg": true,
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
-    "**/docs": false
+    "**/docs": false,
+    "**/node_modules": false
   }
 }

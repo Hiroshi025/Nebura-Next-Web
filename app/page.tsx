@@ -14,10 +14,20 @@ import { useInView } from "react-intersection-observer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-	Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import {
+  NotificationProvider,
+  useNotification,
+} from "../components/NotificationContext";
 
 interface Repo {
   id: number;
@@ -236,6 +246,37 @@ const PortfolioPage = () => {
 
     return <span ref={ref}>{count}</span>;
   };
+
+  function ToolButtons() {
+    const notify = useNotification();
+
+    const handleCopy = async () => {
+      try {
+        // ...lógica de copiado...
+        notify({ message: "¡Copiado al portapapeles!", type: "success" });
+      } catch {
+        notify({ message: "Error al copiar.", type: "error" });
+      }
+    };
+
+    const handleDownload = () => {
+      // ...lógica de descarga...
+      notify({ message: "Descarga iniciada.", type: "info" });
+    };
+
+    const handleConvert = () => {
+      // ...lógica de conversión...
+      notify({ message: "Conversión completada.", type: "success" });
+    };
+
+    return (
+      <div>
+        <button onClick={handleCopy}>Copiar</button>
+        <button onClick={handleDownload}>Descargar</button>
+        <button onClick={handleConvert}>Convertir</button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">
@@ -1124,4 +1165,10 @@ const PortfolioPage = () => {
   );
 };
 
-export default PortfolioPage;
+export default function Page() {
+  return (
+    <NotificationProvider>
+      <PortfolioPage />
+    </NotificationProvider>
+  );
+}

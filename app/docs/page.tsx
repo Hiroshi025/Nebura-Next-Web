@@ -5,11 +5,13 @@ import yaml from "js-yaml"; // npm install js-yaml
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import {
-	FaCodeBranch, FaDiscord, FaExpand, FaGithub, FaGoogle, FaHistory, FaKey, FaLink, FaRandom,
-	FaSearch, FaSearchMinus, FaSearchPlus, FaServer, FaShieldAlt, FaWhatsapp
+	FaCodeBranch, FaDiscord, FaExpand, FaGithub, FaGoogle, FaHistory, FaKey, FaLink, FaPalette,
+	FaRandom, FaRegListAlt, FaSearch, FaSearchMinus, FaSearchPlus, FaSeedling, FaServer,
+	FaShieldAlt, FaWhatsapp
 } from "react-icons/fa";
 import { FiCheck, FiCopy } from "react-icons/fi";
 
+import { useNotification } from "@/components/NotificationContext";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle
@@ -18,7 +20,9 @@ import {
 	DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
+import { MinecraftToolbox } from "./MinecraftTools";
 import { QrGenerator } from "./QrGenerator";
+import { CodePlayground, CommandLiveEditor } from "./Tools";
 import { WebhookTester } from "./WebhookTester";
 
 // Define the Feature type for documentation features
@@ -441,7 +445,7 @@ const documentationSections: DocumentationSection[] = [
       "La arquitectura sigue un patrón modular con un orquestador central que gestiona los diferentes servicios y sus interacciones.",
       "Orquestador Principal: Gestiona el ciclo de vida de todos los módulos y servicios.",
       "Módulos: Componentes independientes que pueden activarse/desactivarse.",
-      "Recursos Compartidos: Funcionalidades comunes reutilizables entre módulos.",
+      "Recursos Compartidos: Funcionalidades comunes reutilables entre módulos.",
     ],
   },
   {
@@ -1479,6 +1483,7 @@ const JsonValidator = () => {
     },
   });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const notify = useNotification();
 
   // NUEVO: Estados para conversiones y formato
   const [yamlValue, setYamlValue] = useState("");
@@ -1581,6 +1586,7 @@ const JsonValidator = () => {
   // NUEVO: Copiar utilidades
   const copyToClipboard = (val: string) => {
     navigator.clipboard.writeText(val);
+    notify({ message: "¡Copiado al portapapeles!", type: "success" });
   };
 
   // NUEVO: Descargar archivo
@@ -1596,6 +1602,7 @@ const JsonValidator = () => {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    notify({ message: `Descargado: ${filename}`, type: "info" });
   };
 
   // NUEVO: Importar archivo
@@ -1605,6 +1612,7 @@ const JsonValidator = () => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       setInput(ev.target?.result as string);
+      notify({ message: "Archivo importado correctamente.", type: "success" });
     };
     reader.readAsText(file);
   };
@@ -1614,24 +1622,27 @@ const JsonValidator = () => {
     try {
       const obj = yaml.load(yamlValue);
       setInput(JSON.stringify(obj, null, 2));
+      notify({ message: "YAML convertido a JSON.", type: "success" });
     } catch (e) {
-      alert("YAML inválido");
+      notify({ message: "YAML inválido", type: "error" });
     }
   };
   const handleBase64ToJson = () => {
     try {
       const str = decodeURIComponent(escape(atob(base64Value)));
       setInput(str);
+      notify({ message: "Base64 convertido a JSON.", type: "success" });
     } catch (e) {
-      alert("Base64 inválido");
+      notify({ message: "Base64 inválido", type: "error" });
     }
   };
   const handleCsvToJson = () => {
     try {
       const arr = csvToJson(csvValue);
       setInput(JSON.stringify(arr, null, 2));
+      notify({ message: "CSV convertido a JSON.", type: "success" });
     } catch (e) {
-      alert("CSV inválido");
+      notify({ message: "CSV inválido", type: "error" });
     }
   };
 
@@ -1888,6 +1899,421 @@ const JsonValidator = () => {
   );
 };
 
+// NUEVAS HERRAMIENTAS AVANZADAS
+
+// Tester de Expresiones Regulares
+const RegexTester = () => {
+  const [pattern, setPattern] = useState("");
+  const [flags, setFlags] = useState("g");
+  const [testString, setTestString] = useState("");
+  const [matches, setMatches] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setError(null);
+      if (!pattern) {
+        setMatches([]);
+        return;
+      }
+      const regex = new RegExp(pattern, flags);
+      const found = Array.from(testString.matchAll(regex)).map((m) => m[0]);
+      setMatches(found);
+    } catch (e: any) {
+      setError(e.message);
+      setMatches([]);
+    }
+  }, [pattern, flags, testString]);
+
+  return (
+    <div className="bg-gray-800/60 rounded-xl p-6 mb-2 shadow-lg border border-purple-700/20 max-w-2xl mx-auto">
+      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <FaCodeBranch className="text-purple-400" /> Tester de Expresiones
+        Regulares
+      </h3>
+      <div className="mb-3 flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
+          <label className="block text-gray-300 mb-1 font-medium">
+            Expresión Regular
+          </label>
+          <input
+            type="text"
+            value={pattern}
+            onChange={(e) => setPattern(e.target.value)}
+            className="w-full px-4 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono"
+            placeholder="Ej: ^[a-zA-Z0-9]+$"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-300 mb-1 font-medium">Flags</label>
+          <input
+            type="text"
+            value={flags}
+            onChange={(e) => setFlags(e.target.value.replace(/[^gimsuy]/g, ""))}
+            className="w-20 px-2 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono"
+            maxLength={6}
+            placeholder="gim"
+          />
+        </div>
+      </div>
+      <div className="mb-3">
+        <label className="block text-gray-300 mb-1 font-medium">
+          Texto de Prueba
+        </label>
+        <textarea
+          value={testString}
+          onChange={(e) => setTestString(e.target.value)}
+          className="w-full h-24 px-4 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono"
+          placeholder="Introduce el texto a analizar..."
+        />
+      </div>
+      {error ? (
+        <div className="bg-red-900/40 border border-red-700 rounded-lg p-3 text-red-200 mb-2">
+          <b>Error:</b> {error}
+        </div>
+      ) : (
+        <div className="bg-green-900/40 border border-green-700 rounded-lg p-3 text-green-200 mb-2">
+          <b>Coincidencias encontradas:</b> {matches.length}
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+            {matches.map((m, i) => (
+              <span
+                key={i}
+                className="bg-gray-900 px-2 py-1 rounded text-purple-300 font-mono break-all"
+              >
+                {m}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="text-xs text-gray-400 mt-2">
+        Soporta flags: g (global), i (insensible a mayúsculas), m (multilínea),
+        s (dotAll), u (unicode), y (sticky).
+      </div>
+    </div>
+  );
+};
+
+// Conversor de Color (HEX, RGB, HSL, Copiar, Vista previa)
+const ColorConverter = () => {
+  const [hex, setHex] = useState("#4f46e5");
+  const [rgb, setRgb] = useState("79,70,229");
+  const [hsl, setHsl] = useState("241,75%,59%");
+  const [inputMode, setInputMode] = useState<"hex" | "rgb" | "hsl">("hex");
+  const notify = useNotification();
+
+  // Utilidades de conversión
+  function hexToRgb(hex: string) {
+    let c = hex.replace("#", "");
+    if (c.length === 3)
+      c = c
+        .split("")
+        .map((x) => x + x)
+        .join("");
+    const num = parseInt(c, 16);
+    return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+  }
+  function rgbToHex(r: number, g: number, b: number) {
+    return (
+      "#" +
+      [r, g, b]
+        .map((x) => x.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase()
+    );
+  }
+  function rgbToHsl(r: number, g: number, b: number) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    let h = 0,
+      s = 0,
+      l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r:
+          h = (g - b) / d + (g < b ? 6 : 0);
+          break;
+        case g:
+          h = (b - r) / d + 2;
+          break;
+        case b:
+          h = (r - g) / d + 4;
+          break;
+      }
+      h /= 6;
+    }
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+  }
+  function hslToRgb(h: number, s: number, l: number) {
+    s /= 100;
+    l /= 100;
+    let c = (1 - Math.abs(2 * l - 1)) * s;
+    let x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    let m = l - c / 2;
+    let r = 0,
+      g = 0,
+      b = 0;
+    if (h < 60) [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    return [
+      Math.round((r + m) * 255),
+      Math.round((g + m) * 255),
+      Math.round((b + m) * 255),
+    ];
+  }
+
+  // Sincroniza valores al cambiar input
+  useEffect(() => {
+    try {
+      if (inputMode === "hex") {
+        const rgbArr = hexToRgb(hex);
+        setRgb(rgbArr.join(","));
+        if (rgbArr.length === 3) {
+          setHsl(rgbToHsl(rgbArr[0], rgbArr[1], rgbArr[2]).join(",") + "%");
+        }
+      } else if (inputMode === "rgb") {
+        const rgbArr = rgb.split(",").map(Number);
+        if (rgbArr.length === 3 && rgbArr.every((n) => !isNaN(n))) {
+          setHex(rgbToHex(rgbArr[0], rgbArr[1], rgbArr[2]));
+          setHsl(rgbToHsl(rgbArr[0], rgbArr[1], rgbArr[2]).join(",") + "%");
+        }
+      } else if (inputMode === "hsl") {
+        const [h, s, l] = hsl.replace("%", "").split(",").map(Number);
+        const rgbArr = hslToRgb(h, s, l);
+        setRgb(rgbArr.join(","));
+        setHex(rgbToHex(...(rgbArr as [number, number, number])));
+      }
+    } catch {
+      // ignore errors
+    }
+    // eslint-disable-next-line
+  }, [hex, rgb, hsl, inputMode]);
+
+  const copy = (val: string) => {
+    navigator.clipboard.writeText(val);
+    notify({ message: "¡Copiado al portapapeles!", type: "success" });
+  };
+
+  return (
+    <div className="bg-gray-800/60 rounded-xl p-6 mb-2 shadow-lg border border-purple-700/20 max-w-2xl mx-auto">
+      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <FaPalette className="text-purple-400" /> Conversor de Color
+      </h3>
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setInputMode("hex")}
+          className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
+            inputMode === "hex"
+              ? "bg-purple-700 text-white border-purple-700"
+              : "bg-gray-700 text-gray-300 border-gray-700"
+          }`}
+        >
+          HEX
+        </button>
+        <button
+          onClick={() => setInputMode("rgb")}
+          className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
+            inputMode === "rgb"
+              ? "bg-purple-700 text-white border-purple-700"
+              : "bg-gray-700 text-gray-300 border-gray-700"
+          }`}
+        >
+          RGB
+        </button>
+        <button
+          onClick={() => setInputMode("hsl")}
+          className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
+            inputMode === "hsl"
+              ? "bg-purple-700 text-white border-purple-700"
+              : "bg-gray-700 text-gray-300 border-gray-700"
+          }`}
+        >
+          HSL
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label className="block text-gray-300 mb-1 font-medium">HEX</label>
+          <input
+            type="text"
+            value={hex}
+            onChange={(e) => {
+              setHex(e.target.value);
+              setInputMode("hex");
+            }}
+            className="w-full px-3 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono"
+            maxLength={7}
+          />
+          <button
+            onClick={() => copy(hex)}
+            className="mt-1 text-xs text-blue-400 hover:underline"
+          >
+            Copiar
+          </button>
+        </div>
+        <div>
+          <label className="block text-gray-300 mb-1 font-medium">RGB</label>
+          <input
+            type="text"
+            value={rgb}
+            onChange={(e) => {
+              setRgb(e.target.value);
+              setInputMode("rgb");
+            }}
+            className="w-full px-3 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono"
+            placeholder="Ej: 79,70,229"
+          />
+          <button
+            onClick={() => copy(`rgb(${rgb})`)}
+            className="mt-1 text-xs text-blue-400 hover:underline"
+          >
+            Copiar
+          </button>
+        </div>
+        <div>
+          <label className="block text-gray-300 mb-1 font-medium">HSL</label>
+          <input
+            type="text"
+            value={hsl}
+            onChange={(e) => {
+              setHsl(e.target.value);
+              setInputMode("hsl");
+            }}
+            className="w-full px-3 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono"
+            placeholder="Ej: 241,75%,59%"
+          />
+          <button
+            onClick={() => copy(`hsl(${hsl})`)}
+            className="mt-1 text-xs text-blue-400 hover:underline"
+          >
+            Copiar
+          </button>
+        </div>
+      </div>
+      <div className="flex items-center gap-4 mt-2">
+        <div
+          className="w-16 h-16 rounded-lg border-2 border-purple-700"
+          style={{ background: hex }}
+          title={hex}
+        ></div>
+        <span className="text-gray-400 text-xs">Vista previa</span>
+      </div>
+      <div className="text-xs text-gray-400 mt-2">
+        Convierte entre HEX, RGB y HSL. Copia cualquier formato y visualiza el
+        color.
+      </div>
+    </div>
+  );
+};
+
+// Analizador de Headers HTTP
+const HttpHeadersAnalyzer = () => {
+  const [rawHeaders, setRawHeaders] = useState("");
+  const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
+  const [summary, setSummary] = useState<{ [k: string]: string }>({});
+
+  useEffect(() => {
+    const lines = rawHeaders.split(/\r?\n/).filter(Boolean);
+    const parsed: { key: string; value: string }[] = [];
+    lines.forEach((line) => {
+      const idx = line.indexOf(":");
+      if (idx > 0) {
+        parsed.push({
+          key: line.slice(0, idx).trim(),
+          value: line.slice(idx + 1).trim(),
+        });
+      }
+    });
+    setHeaders(parsed);
+
+    // Resumen avanzado
+    const sum: { [k: string]: string } = {};
+    parsed.forEach(({ key, value }) => {
+      const k = key.toLowerCase();
+      if (k === "content-type") sum["Tipo de Contenido"] = value;
+      if (k === "content-length") sum["Tamaño"] = value + " bytes";
+      if (k === "server") sum["Servidor"] = value;
+      if (k === "set-cookie") sum["Cookies"] = value;
+      if (k === "x-powered-by") sum["X-Powered-By"] = value;
+      if (k === "date") sum["Fecha"] = value;
+      if (k === "cache-control") sum["Cache"] = value;
+      if (k === "location") sum["Redirección"] = value;
+      if (k === "strict-transport-security") sum["HSTS"] = value;
+    });
+    setSummary(sum);
+  }, [rawHeaders]);
+
+  return (
+    <div className="bg-gray-800/60 rounded-xl p-6 mb-2 shadow-lg border border-purple-700/20 max-w-2xl mx-auto">
+      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <FaRegListAlt className="text-purple-400" /> Analizador de Headers HTTP
+      </h3>
+      <div className="mb-3">
+        <label className="block text-gray-300 mb-1 font-medium">
+          Headers HTTP (pega aquí)
+        </label>
+        <textarea
+          value={rawHeaders}
+          onChange={(e) => setRawHeaders(e.target.value)}
+          className="w-full h-32 px-4 py-2 rounded-lg bg-gray-700 text-gray-200 font-mono"
+          placeholder={`Ejemplo:\nContent-Type: application/json\nServer: nginx\nSet-Cookie: sessionid=abc123; Path=/`}
+        />
+      </div>
+      {headers.length > 0 && (
+        <div className="mb-3">
+          <h4 className="font-bold text-gray-200 mb-2">Headers Analizados:</h4>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-xs bg-gray-900 rounded-lg">
+              <thead>
+                <tr>
+                  <th className="px-2 py-1 text-left text-purple-400">Clave</th>
+                  <th className="px-2 py-1 text-left text-purple-400">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {headers.map((h, i) => (
+                  <tr key={i}>
+                    <td className="px-2 py-1 text-gray-300 font-mono">
+                      {h.key}
+                    </td>
+                    <td className="px-2 py-1 text-gray-400 font-mono break-all">
+                      {h.value}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {Object.keys(summary).length > 0 && (
+        <div className="bg-gray-900/50 rounded-lg p-3 border border-gray-700 mt-2">
+          <h5 className="font-bold text-gray-300 mb-1">Resumen:</h5>
+          <ul className="list-disc list-inside text-gray-400">
+            {Object.entries(summary).map(([k, v], i) => (
+              <li key={i}>
+                <b>{k}:</b> {v}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="text-xs text-gray-400 mt-2">
+        Analiza headers HTTP, detecta información clave y muestra resumen útil.
+      </div>
+    </div>
+  );
+};
+
 export default function DocumentationPage() {
   const router = useRouter();
   const [isKeyGeneratorOpen, setIsKeyGeneratorOpen] = useState(false);
@@ -1896,6 +2322,12 @@ export default function DocumentationPage() {
   const [isUnixConverterOpen, setIsUnixConverterOpen] = useState(false);
   const [isQrGeneratorOpen, setIsQrGeneratorOpen] = useState(false);
   const [isWebhookTesterOpen, setIsWebhookTesterOpen] = useState(false);
+  const [isRegexTesterOpen, setIsRegexTesterOpen] = useState(false);
+  const [isMinecraftToolsOpen, setIsMinecraftToolsOpen] = useState(false);
+  const [isColorConverterOpen, setIsColorConverterOpen] = useState(false);
+  const [isHeadersAnalyzerOpen, setIsHeadersAnalyzerOpen] = useState(false);
+  const [isCodePlaygroundOpen, setIsCodePlaygroundOpen] = useState(false);
+  const [isCommandEditorOpen, setIsCommandEditorOpen] = useState(false);
   const [generatedKey, setGeneratedKey] = useState("");
   const [keyType, setKeyType] = useState("license");
   const [keyLength, setKeyLength] = useState(32);
@@ -1904,6 +2336,7 @@ export default function DocumentationPage() {
   const [selectedSecurityVersion, setSelectedSecurityVersion] = useState(
     securityVersions[0]
   );
+  const notify = useNotification();
 
   // NUEVO: Opciones para contraseñas
   const [pwOptions, setPwOptions] = useState({
@@ -2038,6 +2471,7 @@ export default function DocumentationPage() {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedKey);
     setIsCopied(true);
+    notify({ message: "¡Copiado al portapapeles!", type: "success" });
     setTimeout(() => setIsCopied(false), 2000);
   };
 
@@ -2085,6 +2519,7 @@ export default function DocumentationPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
             transition={{ delay: 0.6 }}
             className="flex flex-wrap justify-center gap-4"
           >
@@ -2138,40 +2573,72 @@ export default function DocumentationPage() {
                 >
                   <FaKey className="mr-2" /> Generador de Claves
                 </DropdownMenuItem>
-                {/* NUEVO: Conversor Unix */}
                 <DropdownMenuItem
                   onClick={() => setIsUnixConverterOpen(true)}
                   className="hover:bg-gray-700 cursor-pointer"
                 >
                   <FaHistory className="mr-2" /> Conversor Unix
                 </DropdownMenuItem>
-                {/* NUEVO: Generador de QR */}
                 <DropdownMenuItem
                   onClick={() => setIsQrGeneratorOpen(true)}
                   className="hover:bg-gray-700 cursor-pointer"
                 >
                   <FaWhatsapp className="mr-2" /> Generador de QR
                 </DropdownMenuItem>
-                {/* NUEVO: Tester de Webhooks */}
                 <DropdownMenuItem
                   onClick={() => setIsWebhookTesterOpen(true)}
                   className="hover:bg-gray-700 cursor-pointer"
                 >
                   <FaLink className="mr-2" /> Tester de Webhooks
                 </DropdownMenuItem>
+                {/* NUEVAS HERRAMIENTAS */}
+                <DropdownMenuItem
+                  onClick={() => setIsRegexTesterOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaCodeBranch className="mr-2" /> Tester de Regex
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsColorConverterOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaPalette className="mr-2" /> Conversor de Color
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsHeadersAnalyzerOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaRegListAlt className="mr-2" /> Analizador de Headers HTTP
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsCodePlaygroundOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaCodeBranch className="mr-2" /> Playground de Código
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsCommandEditorOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaDiscord className="mr-2" /> Simulador de Comandos
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsMinecraftToolsOpen(true)}
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <FaSeedling className="mr-2" /> Minecraft Toolbox
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </motion.div>
         </div>
       </motion.header>
-
       {/* NUEVO: Sección de Herramientas profesionales */}
       <section className="py-10 px-4">
         <div className="container mx-auto max-w-6xl">
           <SystemStatus />
         </div>
       </section>
-
       {/* NUEVO: Sección de Documentación y Buscador */}
       <section className="py-10 px-4 bg-gray-950/80">
         <div className="container mx-auto max-w-6xl">
@@ -2187,7 +2654,6 @@ export default function DocumentationPage() {
           />
         </div>
       </section>
-
       {/* Main Content: Tabs para funcionalidades, seguridad y enlaces */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
@@ -2431,7 +2897,6 @@ export default function DocumentationPage() {
           </AnimatePresence>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="py-10 px-4 bg-gray-950 border-t border-gray-800">
         <div className="container mx-auto max-w-4xl text-center">
@@ -2458,7 +2923,6 @@ export default function DocumentationPage() {
           </div>
         </div>
       </footer>
-
       {/* Dialogos para herramientas */}
       <Dialog open={isKeyGeneratorOpen} onOpenChange={setIsKeyGeneratorOpen}>
         <DialogContent className="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
@@ -2736,6 +3200,101 @@ export default function DocumentationPage() {
             </DialogDescription>
           </DialogHeader>
           <WebhookTester />
+        </DialogContent>
+      </Dialog>
+      {/* NUEVO: Dialogo para Tester de Regex */}
+      <Dialog open={isRegexTesterOpen} onOpenChange={setIsRegexTesterOpen}>
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Tester de Expresiones Regulares
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Prueba y depura expresiones regulares en tiempo real.
+            </DialogDescription>
+          </DialogHeader>
+          <RegexTester />
+        </DialogContent>
+      </Dialog>
+      {/* NUEVO: Dialogo para Conversor de Color */}
+      <Dialog
+        open={isColorConverterOpen}
+        onOpenChange={setIsColorConverterOpen}
+      >
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Conversor de Color
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Convierte entre HEX, RGB y HSL. Copia y visualiza colores.
+            </DialogDescription>
+          </DialogHeader>
+          <ColorConverter />
+        </DialogContent>
+      </Dialog>
+      {/* NUEVO: Dialogo para Analizador de Headers HTTP */}
+      <Dialog
+        open={isHeadersAnalyzerOpen}
+        onOpenChange={setIsHeadersAnalyzerOpen}
+      >
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Analizador de Headers HTTP
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Analiza y resume headers HTTP de peticiones y respuestas.
+            </DialogDescription>
+          </DialogHeader>
+          <HttpHeadersAnalyzer />
+        </DialogContent>
+      </Dialog>
+      // Diálogo para Playground de Código
+      <Dialog
+        open={isCodePlaygroundOpen}
+        onOpenChange={setIsCodePlaygroundOpen}
+      >
+        <DialogContent className="max-w-3xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Playground de Código API
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Prueba fragmentos de código JavaScript para interactuar con APIs.
+            </DialogDescription>
+          </DialogHeader>
+          <CodePlayground />
+        </DialogContent>
+      </Dialog>
+      // Diálogo para Live Editor de Comandos
+      <Dialog open={isCommandEditorOpen} onOpenChange={setIsCommandEditorOpen}>
+        <DialogContent className="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Live Editor de Comandos
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Simula y prueba comandos de Discord y WhatsApp.
+            </DialogDescription>
+          </DialogHeader>
+          <CommandLiveEditor />
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={isMinecraftToolsOpen}
+        onOpenChange={setIsMinecraftToolsOpen}
+      >
+        <DialogContent className="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Minecraft Toolbox
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Herramientas para servidores, skins y semillas de Minecraft.
+            </DialogDescription>
+          </DialogHeader>
+          <MinecraftToolbox />
         </DialogContent>
       </Dialog>
     </main>

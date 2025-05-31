@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "../styles/notifications.css";
+
+import { NotificationProvider } from "../components/NotificationContext";
 
 export const metadata: Metadata = {
   title: "Nebura - Hiroshi025",
@@ -24,7 +27,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></link>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+          rel="stylesheet"
+        ></link>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -33,7 +39,9 @@ export default function RootLayout({
         />
         <link rel="icon" href="/placeholder-logo.png" type="image/x-icon" />
       </head>
-      <body>{children}</body>
+      <body>
+        <NotificationProvider>{children}</NotificationProvider>
+      </body>
     </html>
   );
 }
