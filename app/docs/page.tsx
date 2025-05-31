@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import {
 	FaCodeBranch, FaDiscord, FaExpand, FaGithub, FaGoogle, FaHistory, FaKey, FaLink, FaPalette,
-	FaRandom, FaRegListAlt, FaSearch, FaSearchMinus, FaSearchPlus, FaSeedling, FaServer,
-	FaShieldAlt, FaWhatsapp
+	FaRandom, FaRegListAlt, FaSearch, FaSearchMinus, FaSearchPlus, FaServer, FaShieldAlt, FaWhatsapp
 } from "react-icons/fa";
 import { FiCheck, FiCopy } from "react-icons/fi";
 
@@ -2620,12 +2619,6 @@ export default function DocumentationPage() {
                   className="hover:bg-gray-700 cursor-pointer"
                 >
                   <FaDiscord className="mr-2" /> Simulador de Comandos
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setIsMinecraftToolsOpen(true)}
-                  className="hover:bg-gray-700 cursor-pointer"
-                >
-                  <FaSeedling className="mr-2" /> Minecraft Toolbox
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
