@@ -12,6 +12,7 @@ import {
 import { FiCheck, FiCopy } from "react-icons/fi";
 
 import { useNotification } from "@/components/NotificationContext";
+import { QrGenerator } from "@/components/QrGenerator";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle
@@ -20,10 +21,8 @@ import {
 	DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
-import { MinecraftToolbox } from "./MinecraftTools";
-import { QrGenerator } from "./QrGenerator";
+import { WebhookTester } from "../../components/WebhookTester";
 import { CodePlayground, CommandLiveEditor } from "./Tools";
-import { WebhookTester } from "./WebhookTester";
 
 // Define the Feature type for documentation features
 type Feature = {
@@ -3279,22 +3278,6 @@ export default function DocumentationPage() {
             </DialogDescription>
           </DialogHeader>
           <CommandLiveEditor />
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={isMinecraftToolsOpen}
-        onOpenChange={setIsMinecraftToolsOpen}
-      >
-        <DialogContent className="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-white">
-              Minecraft Toolbox
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Herramientas para servidores, skins y semillas de Minecraft.
-            </DialogDescription>
-          </DialogHeader>
-          <MinecraftToolbox />
         </DialogContent>
       </Dialog>
     </main>
