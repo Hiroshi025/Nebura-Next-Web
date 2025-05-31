@@ -28,6 +28,7 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
     workerThreads: true,
+    cpus: 2,
   },
 };
 
