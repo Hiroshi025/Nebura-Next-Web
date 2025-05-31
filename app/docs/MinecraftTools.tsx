@@ -2278,7 +2278,7 @@ export const MinecraftToolbox = () => {
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-gray-700 text-center text-gray-400 text-sm">
           <p>
-            Minecraft Toolbox © {new Date().getFullYear()} - No afiliado a
+            Nebura © {new Date().getFullYear()} - No afiliado a
             Mojang o Microsoft
           </p>
           <p className="mt-1">
