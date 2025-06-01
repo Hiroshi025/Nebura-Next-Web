@@ -2,25 +2,49 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import yaml from "js-yaml"; // npm install js-yaml
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import {
-	FaCodeBranch, FaDiscord, FaExpand, FaGithub, FaGoogle, FaHistory, FaKey, FaLink, FaPalette,
-	FaRandom, FaRegListAlt, FaSearch, FaSearchMinus, FaSearchPlus, FaServer, FaShieldAlt, FaWhatsapp
+  FaCodeBranch,
+  FaDiscord,
+  FaExpand,
+  FaGithub,
+  FaGoogle,
+  FaHistory,
+  FaImage,
+  FaKey,
+  FaLink,
+  FaPalette,
+  FaRandom,
+  FaRegListAlt,
+  FaSearch,
+  FaSearchMinus,
+  FaSearchPlus,
+  FaServer,
+  FaShieldAlt,
+  FaWhatsapp,
 } from "react-icons/fa";
 import { FiCheck, FiCopy } from "react-icons/fi";
 
-import { useNotification } from "@/components/NotificationContext";
-import { QrGenerator } from "@/components/QrGenerator";
+import { useNotification } from "@/components/tools/NotificationContext";
+import { QrGenerator } from "@/components/tools/QrGenerator";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-	Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-	DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { WebhookTester } from "../../components/WebhookTester";
+import { WebhookTester } from "../../components/tools/WebhookTester";
 import { CodePlayground, CommandLiveEditor } from "./Tools";
 
 // Define the Feature type for documentation features
@@ -2330,6 +2354,7 @@ export default function DocumentationPage() {
   const [keyType, setKeyType] = useState("license");
   const [keyLength, setKeyLength] = useState(32);
   const [isCopied, setIsCopied] = useState(false);
+  const [isEmbedBuilderOpen, setIsEmbedBuilderOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("features");
   const [selectedSecurityVersion, setSelectedSecurityVersion] = useState(
     securityVersions[0]
@@ -2619,6 +2644,14 @@ export default function DocumentationPage() {
                   className="hover:bg-gray-700 cursor-pointer"
                 >
                   <FaDiscord className="mr-2" /> Simulador de Comandos
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  asChild
+                  className="hover:bg-gray-700 cursor-pointer"
+                >
+                  <Link href="/embed-builder" className="flex items-center">
+                    <FaImage className="mr-2" /> Constructor de Embeds
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

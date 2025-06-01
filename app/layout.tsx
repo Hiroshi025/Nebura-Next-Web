@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "../styles/notifications.css";
 
-import { NotificationProvider } from "../components/NotificationContext";
+import { NotificationProvider } from "../components/tools/NotificationContext";
 
 export const metadata: Metadata = {
   title: "Nebura - Hiroshi025",

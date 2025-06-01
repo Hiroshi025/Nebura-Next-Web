@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   NotificationProvider,
   useNotification,
-} from "../components/NotificationContext";
+} from "../components/tools/NotificationContext";
 
 interface Repo {
   id: number;
