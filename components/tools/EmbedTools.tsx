@@ -9,7 +9,7 @@ import { FiCheck } from "react-icons/fi";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tab, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
+import { Tab, TabPanel, Tabs, TabsList, TabsProvider } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
 
@@ -1229,136 +1229,138 @@ export const EmbedBuilder = () => {
 
             {/* Code Section */}
             <div className="bg-gray-900/50 rounded-xl border border-gray-700 shadow-lg overflow-hidden">
-              <Tabs value={activeTab} onChange={setActiveTab}>
-                <TabsList className="bg-gray-800/50 border-b border-gray-700">
-                  <Tab value="json" className="flex items-center gap-1">
-                    <FaFileExport size={14} /> JSON
-                  </Tab>
-                  <Tab value="discordjs" className="flex items-center gap-1">
-                    <FaJs size={14} /> Discord.js
-                  </Tab>
-                  <Tab value="discordpy" className="flex items-center gap-1">
-                    <FaPython size={14} /> Discord.py
-                  </Tab>
-                </TabsList>
+              <TabsProvider defaultTab="json">
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="bg-gray-800/50 border-b border-gray-700">
+                    <Tab value="json" className="flex items-center gap-1">
+                      <FaFileExport size={14} /> JSON
+                    </Tab>
+                    <Tab value="discordjs" className="flex items-center gap-1">
+                      <FaJs size={14} /> Discord.js
+                    </Tab>
+                    <Tab value="discordpy" className="flex items-center gap-1">
+                      <FaPython size={14} /> Discord.py
+                    </Tab>
+                  </TabsList>
 
-                <div className="p-4">
-                  <TabPanel value="json">
-                    <div className="flex gap-2 mb-4">
-                      <Button
-                        onClick={() => {
-                          navigator.clipboard.writeText(getEmbedCode());
-                          setIsCopied(true);
-                          notify({ message: "JSON copied!", type: "success" });
-                          setTimeout(() => setIsCopied(false), 2000);
-                        }}
-                        variant="default"
-                        size="sm"
-                        className="gap-1"
-                      >
-                        {isCopied ? <FiCheck /> : <FaCopy />}
-                        {isCopied ? "Copied!" : "Copy JSON"}
-                      </Button>
-
-                      <Button
-                        onClick={() => exportEmbed("json")}
-                        variant="outline"
-                        size="sm"
-                        className="gap-1 bg-gray-700 text-white hover:bg-purple-700 border-none"
-                      >
-                        <FaFileExport size={14} /> Export JSON
-                      </Button>
-
-                      <label className="inline-flex items-center justify-center px-3 py-1 rounded text-sm bg-gray-700 hover:bg-purple-700 cursor-pointer gap-1">
-                        <FaFileImport size={14} /> Import JSON
-                        <input
-                          type="file"
-                          accept=".json"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) importEmbed(file);
+                  <div className="p-4">
+                    <TabPanel value="json">
+                      <div className="flex gap-2 mb-4">
+                        <Button
+                          onClick={() => {
+                            navigator.clipboard.writeText(getEmbedCode());
+                            setIsCopied(true);
+                            notify({ message: "JSON copied!", type: "success" });
+                            setTimeout(() => setIsCopied(false), 2000);
                           }}
-                        />
-                      </label>
-                    </div>
+                          variant="default"
+                          size="sm"
+                          className="gap-1"
+                        >
+                          {isCopied ? <FiCheck /> : <FaCopy />}
+                          {isCopied ? "Copied!" : "Copy JSON"}
+                        </Button>
 
-                    <pre className="bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs text-gray-300 max-h-96">
-                      {getEmbedCode()}
-                    </pre>
-                  </TabPanel>
+                        <Button
+                          onClick={() => exportEmbed("json")}
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 bg-gray-700 text-white hover:bg-purple-700 border-none"
+                        >
+                          <FaFileExport size={14} /> Export JSON
+                        </Button>
 
-                  <TabPanel value="discordjs">
-                    <div className="flex gap-2 mb-4">
-                      <Button
-                        onClick={() => {
-                          navigator.clipboard.writeText(getDiscordJSCode());
-                          setIsCopied(true);
-                          notify({
-                            message: "Discord.js code copied!",
-                            type: "success",
-                          });
-                          setTimeout(() => setIsCopied(false), 2000);
-                        }}
-                        variant="default"
-                        size="sm"
-                        className="gap-1"
-                      >
-                        {isCopied ? <FiCheck /> : <FaCopy />}
-                        {isCopied ? "Copied!" : "Copy Code"}
-                      </Button>
+                        <label className="inline-flex items-center justify-center px-3 py-1 rounded text-sm bg-gray-700 hover:bg-purple-700 cursor-pointer gap-1">
+                          <FaFileImport size={14} /> Import JSON
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) importEmbed(file);
+                            }}
+                          />
+                        </label>
+                      </div>
 
-                      <Button
-                        onClick={() => exportEmbed("discordjs")}
-                        variant="outline"
-                        size="sm"
-                        className="gap-1 bg-gray-700 text-white hover:bg-purple-700 border-none"
-                      >
-                        <FaFileExport size={14} /> Export File
-                      </Button>
-                    </div>
+                      <pre className="bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs text-gray-300 max-h-96">
+                        {getEmbedCode()}
+                      </pre>
+                    </TabPanel>
 
-                    <pre className="bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs text-gray-300 max-h-96">
-                      {getDiscordJSCode()}
-                    </pre>
-                  </TabPanel>
+                    <TabPanel value="discordjs">
+                      <div className="flex gap-2 mb-4">
+                        <Button
+                          onClick={() => {
+                            navigator.clipboard.writeText(getDiscordJSCode());
+                            setIsCopied(true);
+                            notify({
+                              message: "Discord.js code copied!",
+                              type: "success",
+                            });
+                            setTimeout(() => setIsCopied(false), 2000);
+                          }}
+                          variant="default"
+                          size="sm"
+                          className="gap-1"
+                        >
+                          {isCopied ? <FiCheck /> : <FaCopy />}
+                          {isCopied ? "Copied!" : "Copy Code"}
+                        </Button>
 
-                  <TabPanel value="discordpy">
-                    <div className="flex gap-2 mb-4">
-                      <Button
-                        onClick={() => {
-                          navigator.clipboard.writeText(getDiscordPyCode());
-                          setIsCopied(true);
-                          notify({
-                            message: "Discord.py code copied!",
-                            type: "success",
-                          });
-                          setTimeout(() => setIsCopied(false), 2000);
-                        }}
-                        variant="default"
-                        size="sm"
-                        className="gap-1"
-                      >
-                        {isCopied ? <FiCheck /> : <FaCopy />}
-                        {isCopied ? "Copied!" : "Copy Code"}
-                      </Button>
+                        <Button
+                          onClick={() => exportEmbed("discordjs")}
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 bg-gray-700 text-white hover:bg-purple-700 border-none"
+                        >
+                          <FaFileExport size={14} /> Export File
+                        </Button>
+                      </div>
 
-                      <Button
-                        onClick={() => exportEmbed("discordpy")}
-                        variant="outline"
-                        size="sm"
-                        className="gap-1 bg-gray-700 text-white hover:bg-purple-700 border-none"
-                      >
-                        <FaFileExport size={14} /> Export File
-                      </Button>
-                    </div>
+                      <pre className="bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs text-gray-300 max-h-96">
+                        {getDiscordJSCode()}
+                      </pre>
+                    </TabPanel>
 
-                    <pre className="bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs text-gray-300 max-h-96">
-                      {getDiscordPyCode()}
-                    </pre>
-                  </TabPanel>
-                </div>
-              </Tabs>
+                    <TabPanel value="discordpy">
+                      <div className="flex gap-2 mb-4">
+                        <Button
+                          onClick={() => {
+                            navigator.clipboard.writeText(getDiscordPyCode());
+                            setIsCopied(true);
+                            notify({
+                              message: "Discord.py code copied!",
+                              type: "success",
+                            });
+                            setTimeout(() => setIsCopied(false), 2000);
+                          }}
+                          variant="default"
+                          size="sm"
+                          className="gap-1"
+                        >
+                          {isCopied ? <FiCheck /> : <FaCopy />}
+                          {isCopied ? "Copied!" : "Copy Code"}
+                        </Button>
+
+                        <Button
+                          onClick={() => exportEmbed("discordpy")}
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 bg-gray-700 text-white hover:bg-purple-700 border-none"
+                        >
+                          <FaFileExport size={14} /> Export File
+                        </Button>
+                      </div>
+
+                      <pre className="bg-gray-800 p-4 rounded-lg overflow-x-auto text-xs text-gray-300 max-h-96">
+                        {getDiscordPyCode()}
+                      </pre>
+                    </TabPanel>
+                  </div>
+                </Tabs>
+              </TabsProvider>
             </div>
           </div>
         </div>
